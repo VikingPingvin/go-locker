@@ -59,3 +59,8 @@ func handleConnection(connection net.Conn) {
 
 	fmt.Println(intent)
 }
+
+func ExecuteServer() {
+	server := &ArtifactServer{Address: "localhost", Port: "27001"}
+	server.Start()
+}

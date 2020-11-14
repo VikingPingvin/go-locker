@@ -27,8 +27,7 @@ var agentCmd = &cobra.Command{
 	Short: "Start Locker in Agent mode",
 	Long:  `locker agent`,
 	Run: func(cmd *cobra.Command, args []string) {
-		agent := &agent.ArtifactAgent{Port: "27001"}
-		agent.Start()
+		agent.ExecuteAgent()
 	},
 }
 

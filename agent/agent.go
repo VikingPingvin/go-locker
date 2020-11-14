@@ -36,3 +36,8 @@ func (a ArtifactAgent) Start() bool {
 
 	return true
 }
+
+func ExecuteAgent() {
+	agent := &ArtifactAgent{Port: "27001"}
+	agent.Start()
+}

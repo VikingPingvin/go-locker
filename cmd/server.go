@@ -27,8 +27,7 @@ var serverCmd = &cobra.Command{
 	Short: "Start locker in server mode",
 	Long:  `server mode`,
 	Run: func(cmd *cobra.Command, args []string) {
-		server := &server.ArtifactServer{Address: "localhost", Port: "27001"}
-		server.Start()
+		server.ExecuteServer()
 	},
 }
 
