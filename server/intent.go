@@ -1,0 +1,6 @@
+package server
+
+const INTENT_SERVER_SEND = 0x55
+const INTENT_SERVER_RECIEVE = 0x59
+
+const INTENT_STREAM_SIZE = 2
