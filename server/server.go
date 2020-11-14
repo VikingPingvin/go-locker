@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/binary"
 	"fmt"
 	"net"
 	"os"
@@ -33,7 +34,7 @@ func (s ArtifactServer) Start() bool {
 	}
 
 	defer server.Close()
-	log.Info().Msg("Server started! Listening for connections...")
+	log.Info().Msg("Locker server started! Listening for connections...")
 	for {
 		connection, err := server.Accept()
 		if err != nil {
@@ -46,7 +47,7 @@ func (s ArtifactServer) Start() bool {
 }
 
 func handleConnection(connection net.Conn) {
-	log.Info().Msg("Client connection established...")
+	log.Info().Msg("Locker client connected.")
 	defer connection.Close()
 
 	intentSize := INTENT_STREAM_SIZE
@@ -54,12 +55,13 @@ func handleConnection(connection net.Conn) {
 
 	connection.Read(intentBuffer)
 	fmt.Println(intentBuffer)
-	//intent := binary.BigEndian.Uint64(intentBuffer)
-	intent, _ := strconv.Atoi(string(intentBuffer))
+	intent := binary.BigEndian.Uint16(intentBuffer)
 
 	fmt.Println(intent)
+	fmt.Println(strconv.ParseInt(string(intent), 10, 16))
 }
 
+// ExecuteServer... Entrypoint for Locker server start
 func ExecuteServer() {
 	server := &ArtifactServer{Address: "localhost", Port: "27001"}
 	server.Start()
