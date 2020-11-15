@@ -1,6 +1,6 @@
 # Welcome to Locker!
 
-Locker is a GO application meant to be used in CI/CD pipelines as an artifact blob storage.
+**Locker** is a GO application meant to be used in CI/CD pipelines as an **artifact blob storage**.
 
 Uses TCP/IP connection for sending file metadata and byte stream.
 
@@ -9,11 +9,11 @@ Application can be used both as a server with DB connection and as an agent to s
 Application built with the help of Cobra.
 
 ## Status
- **WIP!**
+[![Go Report Card](https://goreportcard.com/badge/github.com/VikingPingvin/go-locker)](https://goreportcard.com/report/github.com/VikingPingvin/go-locker)
+
 
 ## Usage example
 
-**WIP!**
 
 > go build .
 ### Start server
