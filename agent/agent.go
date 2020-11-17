@@ -5,9 +5,10 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
-	"strconv"
 	"vikingPingvin/locker/server"
+	"vikingPingvin/locker/server/protobuf"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/rs/zerolog/log"
 )
 
@@ -28,13 +29,18 @@ func (a ArtifactAgent) Start() bool {
 	defer connection.Close()
 	log.Info().Msg("Agent connected to Locker Server...")
 
-	testString := strconv.FormatInt((int64(server.INTENT_SERVER_RECIEVE)), 2)
+	message, err := server.CreateMessage_FileInfo(123, protobuf.MessageType_META, "Test string valami content field-ben...")
+	if err != nil {
+		panic(err)
+	}
 
-	fmt.Printf("Sending source: %d\n", server.INTENT_SERVER_RECIEVE)
-	fmt.Printf("Sending converted: %s\n", testString)
+	dataToSend, err := proto.Marshal(message)
+	if err != nil {
+		panic(err)
+	}
 
 	buffer := new(bytes.Buffer)
-	binary.Write(buffer, binary.BigEndian, server.INTENT_SERVER_SEND)
+	binary.Write(buffer, binary.BigEndian, dataToSend)
 	connection.Write(buffer.Bytes())
 
 	fmt.Printf("Buffer Bytes: %d\n", buffer.Bytes())
@@ -43,7 +49,7 @@ func (a ArtifactAgent) Start() bool {
 	return true
 }
 
-// ExecuteAgent... Entrypoint for Locker agent start
+// ExecuteAgent : Entrypoint for Locker agent start
 func ExecuteAgent() {
 	agent := &ArtifactAgent{Port: "27001"}
 	agent.Start()

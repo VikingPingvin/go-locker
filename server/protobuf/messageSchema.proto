@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package protobuf;
+
+enum MessageType{
+    META = 0;
+    PACKAGE = 1;
+    ACK = 2;
+}
+
+message FileInfo {
+    int32 id = 1;    
+    MessageType msgType = 2;   
+    string content = 3;
+}
+
+message TestMessage{
+    int32 id = 1;
+    string string = 2;
+    uint32 uint = 3;
+    MessageType enum = 4;
+}

@@ -1,12 +1,12 @@
 package server
 
 import (
-	"encoding/binary"
 	"fmt"
 	"net"
 	"os"
-	"strconv"
+	"vikingPingvin/locker/server/protobuf"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/rs/zerolog/log"
 )
 
@@ -50,19 +50,20 @@ func handleConnection(connection net.Conn) {
 	log.Info().Msg("Locker client connected.")
 	defer connection.Close()
 
-	intentSize := INTENT_STREAM_SIZE
-	intentBuffer := make([]byte, intentSize)
+	buffer := make([]byte, 1024)
+	connection.Read(buffer)
 
-	connection.Read(intentBuffer)
-	fmt.Println(intentBuffer)
-	intent := binary.BigEndian.Uint16(intentBuffer)
+	decodedMessage := &protobuf.FileInfo{}
+	//fmt.Printf("Recieved raw Buffer: %v", buffer)
+	proto.Unmarshal(buffer, decodedMessage)
+	fmt.Printf("Decoded msg: %v", decodedMessage)
+	fmt.Printf("ENUM: %v", decodedMessage.MsgType)
 
-	fmt.Println(intent)
-	fmt.Println(strconv.ParseInt(string(intent), 10, 16))
 }
 
-// ExecuteServer... Entrypoint for Locker server start
+// ExecuteServer : Entrypoint for Locker server start
 func ExecuteServer() {
 	server := &ArtifactServer{Address: "localhost", Port: "27001"}
 	server.Start()
+
 }
