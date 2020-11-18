@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"fmt"
@@ -19,6 +20,7 @@ var FileInput string
 // InputData Populated at the start of the program
 type InputData struct {
 	FileInput string
+	Payload   string
 }
 
 type Agent interface {
@@ -58,6 +60,7 @@ func (a ArtifactAgent) Start() bool {
 	return true
 }
 
+// Parse raw CLI input parameters to internal data structures
 func parseInput() *InputData {
 	if len(FileInput) == 0 {
 		log.Info().Msg("No input file was given.")
@@ -65,17 +68,44 @@ func parseInput() *InputData {
 	data := &InputData{
 		FileInput: FileInput,
 	}
-
-	log.Info().Msgf("Input structure: %v", data)
-
 	return data
 }
 
-func parseFile(filePath *string) (err error) {
-	if _, err := os.Stat(*filePath); os.IsNotExist(err) {
+// If --file cli input is not null, parse file
+func parseFile(inputData *InputData) (fileInfo os.FileInfo, err error) {
+	fileInfo, err = os.Stat(inputData.FileInput)
+	if os.IsNotExist(err) {
 		log.Error().Msgf("Parsing file Input error: %v", err)
+		return fileInfo, err
 	}
-	return err
+
+	log.Info().Msgf("File Name: %s", fileInfo.Name())
+	log.Info().Msgf("File size: %d", fileInfo.Size())
+
+	f, err := os.Open(inputData.FileInput)
+	defer f.Close()
+	if err != nil {
+		log.Error().Msgf("Cannot open file %s", inputData.FileInput)
+	}
+
+	fw, _ := os.Create(inputData.FileInput + "bufwritten")
+	defer fw.Close()
+	writer := bufio.NewWriter(fw)
+	reader := bufio.NewReader(f)
+
+	buffer := make([]byte, 1024)
+	for {
+		v, _ := reader.Read(buffer)
+		if v == 0 {
+			break
+		}
+
+		writer.Write(buffer)
+	}
+
+	writer.Flush()
+
+	return fileInfo, err
 }
 
 // ExecuteAgent : Entrypoint for Locker agent start
@@ -83,7 +113,8 @@ func ExecuteAgent() {
 	// Handle input flags
 	inputData := parseInput()
 
-	parseFile(&inputData.FileInput)
+	//fileInfo, _ := parseFile(inputData)
+	parseFile(inputData)
 
 	// Start Agent
 	agent := &ArtifactAgent{Port: "27001"}
