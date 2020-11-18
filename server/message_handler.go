@@ -33,12 +33,12 @@ func testMessage() {
 	fmt.Printf("Buffer Bytes: %d\n", buffer.Bytes())
 }
 
-func CreateMessage_FileInfo(id int32, messageType pb.MessageType, infoContent string) (message *pb.FileInfo, err error) {
+func CreateMessage_FileInfo(id int32, messageType pb.MessageType, payload string) (message *pb.FileInfo, err error) {
 
 	message = &pb.FileInfo{
 		Id:      id,
 		MsgType: messageType,
-		Content: infoContent,
+		Payload: payload,
 	}
 
 	return message, err

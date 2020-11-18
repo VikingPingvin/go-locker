@@ -11,7 +11,7 @@ enum MessageType{
 message FileInfo {
     int32 id = 1;    
     MessageType msgType = 2;   
-    string content = 3;
+    string payload = 3;
 }
 
 message TestMessage{
