@@ -16,8 +16,9 @@ message FileInfo {
 
 message FileMeta{
     int32 id = 1;
-    string filename = 2;
-    string hash = 4;
+    MessageType msgType = 2;   
+    string filename = 3;
+    bytes hash = 4;
 }
 
 message TestMessage{
