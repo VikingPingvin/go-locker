@@ -40,7 +40,22 @@ func CreateMessage_FileInfo(id int32, messageType pb.MessageType, payload string
 		MsgType: messageType,
 		Payload: payload,
 	}
+	return message, err
+}
+
+// CreateMessage_FileMeta Create ProtoBuf message.
+//  id
+//  msgType
+//  fileName
+//  fileHash
+func CreateMessage_FileMeta(id int32, msgType pb.MessageType, fileName string, fileHash []byte) (message *pb.FileMeta, err error) {
+
+	message = &pb.FileMeta{
+		Id:       id,
+		MsgType:  msgType,
+		Filename: fileName,
+		Hash:     fileHash,
+	}
 
 	return message, err
-
 }

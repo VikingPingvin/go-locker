@@ -53,12 +53,12 @@ func handleConnection(connection net.Conn) {
 	buffer := make([]byte, 1024)
 	connection.Read(buffer)
 
-	decodedMessage := &protobuf.FileInfo{}
+	decodedMessage := &protobuf.FileMeta{}
 	//fmt.Printf("Recieved raw Buffer: %v", buffer)
 	proto.Unmarshal(buffer, decodedMessage)
-	fmt.Printf("Decoded msg: %v", decodedMessage)
-	fmt.Printf("ENUM: %v", decodedMessage.MsgType)
 
+	log.Info().Msgf("Recieving artifact with name: %s", decodedMessage.Filename)
+	log.Info().Msgf("Decoded(expected) HASH: %v", []byte(decodedMessage.Hash))
 }
 
 // ExecuteServer : Entrypoint for Locker server start
