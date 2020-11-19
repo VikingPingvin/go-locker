@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"vikingPingvin/locker/server"
@@ -95,16 +96,14 @@ func parseFile(inputData *InputData) (fileInfo os.FileInfo, err error) {
 
 	buffer := make([]byte, 1024)
 	for {
-		v, _ := reader.Read(buffer)
-		if v == 0 {
+		n, ioErr := reader.Read(buffer)
+		writer.Write(buffer[:n])
+		//fmt.Println(n)
+		if ioErr == io.EOF {
 			break
 		}
-
-		writer.Write(buffer)
 	}
-
 	writer.Flush()
-
 	return fileInfo, err
 }
 
