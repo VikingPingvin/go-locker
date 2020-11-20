@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"os"
@@ -19,7 +18,7 @@ import (
 )
 
 // FileInput String Flag for Cobra CMD input
-var FileInput string
+var InputArg string
 
 // InputData Populated at the start of the program
 type InputData struct {
@@ -37,6 +36,13 @@ type ArtifactAgent struct {
 	Port string
 }
 
+// Generic Interface for Protobuf messages
+type protoBufMessage interface {
+	ProtoMessage()
+	Reset()
+	String() string
+}
+
 func (a ArtifactAgent) Start(inputData *InputData) bool {
 	connection, err := net.Dial("tcp", "localhost:27001")
 	if err != nil {
@@ -49,23 +55,16 @@ func (a ArtifactAgent) Start(inputData *InputData) bool {
 	message, err := server.CreateMessage_FileMeta(
 		2234,
 		protobuf.MessageType_META,
+		"test_namespace",
+		"test_project",
 		inputData.FileName,
 		inputData.FileHash)
 	if err != nil {
 		panic(err)
 	}
 
-	dataToSend, err := proto.Marshal(message)
-	if err != nil {
-		panic(err)
-	}
-
-	buffer := new(bytes.Buffer)
-	binary.Write(buffer, binary.BigEndian, dataToSend)
-	connection.Write(buffer.Bytes())
-
-	//fmt.Printf("Buffer Bytes: %d\n", buffer.Bytes())
-	//log.Info().Msg("Test string sent...")
+	// Send Metadata message
+	sendProtoBufMessage(connection, message)
 
 	return true
 }
@@ -73,30 +72,35 @@ func (a ArtifactAgent) Start(inputData *InputData) bool {
 // Parse raw CLI input parameters to internal data structures
 func parseInputArguments() *InputData {
 	var err error
-	if len(FileInput) == 0 {
+	var inputPath string
+
+	if len(InputArg) == 0 {
 		err = errors.New("--file empty")
-		log.Err(err).Str("agent", "fileinput").Msgf("No input file was given.")
+		log.Err(err).Str("agent", "parseInputArguments").Msgf("No input file was given.")
 	}
 	if err != nil {
 		os.Exit(1)
 	}
 
-	if !filepath.IsAbs(FileInput) {
-		cwd, err := os.Executable()
+	inputPath = InputArg
+	if !filepath.IsAbs(InputArg) {
+		cwd, err := os.Getwd()
 		if err != nil {
 			log.Err(err).Msg("Error during CWD PATH parsing")
 			os.Exit(1)
 		}
-		filepath.Join(cwd, FileInput)
+		log.Debug().Msgf("Relative path of input: %s", InputArg)
+		inputPath = filepath.Join(cwd, InputArg)
+
 	}
 	data := &InputData{
-		FileInput: FileInput,
+		FileInput: inputPath,
 	}
 	return data
 }
 
 // If --file cli input is not null, parse file
-func parseFile(inputData *InputData) (fileInfo os.FileInfo, err error) {
+func parseFileMetaData(inputData *InputData) (fileInfo os.FileInfo, err error) {
 	fileInfo, err = os.Stat(inputData.FileInput)
 	if os.IsNotExist(err) {
 		log.Error().Msgf("Parsing file Input error: %v", err)
@@ -140,21 +144,6 @@ func parseFile(inputData *InputData) (fileInfo os.FileInfo, err error) {
 	return fileInfo, err
 }
 
-// sendParsedPayload Recieves []byte from bufferChannel and operates on it.
-//
-// value <- *bufferChannel
-func sendParsedPayload(bufferChannel *chan []byte) {
-	fw, _ := os.OpenFile("E:\\WorkSpace\\Go\\artifact-server\\readmecopy.channel", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	defer fw.Close()
-	writer := bufio.NewWriter(fw)
-	for elem := range *bufferChannel {
-		fmt.Println(len(elem))
-		fmt.Println("GOROUTINE")
-		writer.Write(elem)
-	}
-	writer.Flush()
-}
-
 func sendParsedPayloadBytes(bytes *[]byte, numBytes int) {
 	fw, _ := os.OpenFile("E:\\WorkSpace\\Go\\artifact-server\\readmecopy.channel", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer fw.Close()
@@ -163,17 +152,28 @@ func sendParsedPayloadBytes(bytes *[]byte, numBytes int) {
 	writer.Flush()
 }
 
+// Generic protobuf sender that accepts an interface to the defined messages
+func sendProtoBufMessage(connection net.Conn, message protoBufMessage) {
+	dataToSend, err := proto.Marshal(message)
+	if err != nil {
+		panic(err)
+	}
+	buffer := new(bytes.Buffer)
+	binary.Write(buffer, binary.BigEndian, dataToSend)
+	connection.Write(buffer.Bytes())
+}
+
 // Given a valid file path, returns a SHA256 hash
 func hashFile(path string) (hash []byte) {
 	f, err := os.Open(path)
 	defer f.Close()
 	if err != nil {
-		log.Error().Msgf("Cannot open file %s", path)
+		log.Err(err).Msgf("Cannot open file %s", path)
 	}
 
 	hasher := sha256.New()
 	if _, err := io.Copy(hasher, f); err != nil {
-		log.Error().Msgf("Error calculating SHA256 Hash: %v", err)
+		log.Err(err).Msg("Error calculating SHA256 Hash")
 	}
 	return hasher.Sum(nil)
 }
@@ -183,8 +183,7 @@ func ExecuteAgent() {
 	// Handle input flags
 	inputData := parseInputArguments()
 
-	//fileInfo, _ := parseFile(inputData)
-	parseFile(inputData)
+	parseFileMetaData(inputData)
 
 	// Start Agent
 	agent := &ArtifactAgent{Port: "27001"}

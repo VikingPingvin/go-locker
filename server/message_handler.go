@@ -48,13 +48,26 @@ func CreateMessage_FileInfo(id int32, messageType pb.MessageType, payload string
 //  msgType
 //  fileName
 //  fileHash
-func CreateMessage_FileMeta(id int32, msgType pb.MessageType, fileName string, fileHash []byte) (message *pb.FileMeta, err error) {
+func CreateMessage_FileMeta(id int32, msgType pb.MessageType, namesSpace string, projectName string, fileName string, fileHash []byte) (message *pb.FileMeta, err error) {
 
 	message = &pb.FileMeta{
-		Id:       id,
-		MsgType:  msgType,
-		Filename: fileName,
-		Hash:     fileHash,
+		Id:        id,
+		MsgType:   msgType,
+		Namespace: namesSpace,
+		Project:   projectName,
+		Filename:  fileName,
+		Hash:      fileHash,
+	}
+
+	return message, err
+}
+
+func CreateMessage_FilePackage(id int32, msgType pb.MessageType, payload []byte) (message *pb.FilePackage, err error) {
+
+	message = &pb.FilePackage{
+		Id:      id,
+		MsgType: msgType,
+		Payload: payload,
 	}
 
 	return message, err

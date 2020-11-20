@@ -16,9 +16,18 @@ message FileInfo {
 
 message FileMeta{
     int32 id = 1;
-    MessageType msgType = 2;   
-    string filename = 3;
-    bytes hash = 4;
+    MessageType msgType = 2; 
+    string namespace = 3;
+    string project = 4;  
+    string filename = 5;
+    bytes hash = 6;
+}
+
+message FilePackage{
+    int32 id = 1;
+    MessageType msgType = 2;
+    bytes payload = 3;
+
 }
 
 message TestMessage{

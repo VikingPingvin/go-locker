@@ -2,8 +2,10 @@ package server
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
+	"path/filepath"
 	"vikingPingvin/locker/server/protobuf"
 
 	"github.com/golang/protobuf/proto"
@@ -57,8 +59,34 @@ func handleConnection(connection net.Conn) {
 	//fmt.Printf("Recieved raw Buffer: %v", buffer)
 	proto.Unmarshal(buffer, decodedMessage)
 
-	log.Info().Msgf("Recieving artifact with name: %s", decodedMessage.Filename)
-	log.Info().Msgf("Decoded(expected) HASH: %v", []byte(decodedMessage.Hash))
+	log.Info().
+		Str("Artifact Name", decodedMessage.GetFilename()).
+		Str("NameSpace", decodedMessage.GetNamespace()).
+		Str("Project", decodedMessage.GetProject()).
+		Str("hash", fmt.Sprintf("%v", decodedMessage.GetHash())).
+		Msg("Artifact Meta info Recieved")
+
+	// Create temp file where the payload will be appended
+	createTempFile()
+}
+
+func createTempFile() *os.File {
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Err(err).Str("tempfile", "getwd").Msg("Error getting working directory")
+		os.Exit(1)
+	}
+	outputDir := filepath.Join(cwd, "out")
+	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
+		os.Mkdir(outputDir, os.ModeDir)
+	}
+
+	tmpArtifact, err := ioutil.TempFile(outputDir, "~temp_locker_artifact_")
+	if err != nil {
+		log.Err(err).Str("tempfile", "ioutil").Msg("Error creating temp file on path")
+	}
+	defer tmpArtifact.Close()
+	return tmpArtifact
 }
 
 // ExecuteServer : Entrypoint for Locker server start

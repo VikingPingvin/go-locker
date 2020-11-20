@@ -43,5 +43,5 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// agentCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	agentCmd.Flags().StringVar(&agent.FileInput, "file", "", "Specify path for input artifact file")
+	agentCmd.Flags().StringVar(&agent.InputArg, "file", "", "Specify path for input artifact file")
 }
