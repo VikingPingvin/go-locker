@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -66,6 +67,8 @@ func (a ArtifactAgent) Start(inputData *InputData) bool {
 	// Send Metadata message
 	sendProtoBufMessage(connection, message)
 
+	// Send Payload message(s)
+
 	return true
 }
 
@@ -109,9 +112,10 @@ func parseFileMetaData(inputData *InputData) (fileInfo os.FileInfo, err error) {
 	inputData.FileHash = hashFile(inputData.FileInput)
 	inputData.FileName = fileInfo.Name()
 
-	log.Info().Msgf("File Name: %s", fileInfo.Name())
-	log.Info().Msgf("File size: %d", fileInfo.Size())
-	log.Info().Msgf("Calculated SHA256 Hash: %v", inputData.FileHash)
+	log.Info().
+		Str("file name", fileInfo.Name()).
+		Str("size", fmt.Sprintf("%d", fileInfo.Size())).
+		Str("hash", fmt.Sprintf("%v", inputData.FileHash))
 
 	f, err := os.Open(inputData.FileInput)
 	defer f.Close()
@@ -124,8 +128,6 @@ func parseFileMetaData(inputData *InputData) (fileInfo os.FileInfo, err error) {
 	writer := bufio.NewWriter(fw)
 	reader := bufio.NewReader(f)
 	bufChannel := make(chan []byte)
-
-	//go sendParsedPayload(&bufChannel)
 
 	buffer := make([]byte, 1024)
 	for {
