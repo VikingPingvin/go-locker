@@ -5,10 +5,12 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"vikingPingvin/locker/server"
 	"vikingPingvin/locker/server/protobuf"
 
@@ -70,8 +72,22 @@ func (a ArtifactAgent) Start(inputData *InputData) bool {
 
 // Parse raw CLI input parameters to internal data structures
 func parseInputArguments() *InputData {
+	var err error
 	if len(FileInput) == 0 {
-		log.Info().Msg("No input file was given.")
+		err = errors.New("--file empty")
+		log.Err(err).Str("agent", "fileinput").Msgf("No input file was given.")
+	}
+	if err != nil {
+		os.Exit(1)
+	}
+
+	if !filepath.IsAbs(FileInput) {
+		cwd, err := os.Executable()
+		if err != nil {
+			log.Err(err).Msg("Error during CWD PATH parsing")
+			os.Exit(1)
+		}
+		filepath.Join(cwd, FileInput)
 	}
 	data := &InputData{
 		FileInput: FileInput,
@@ -86,12 +102,11 @@ func parseFile(inputData *InputData) (fileInfo os.FileInfo, err error) {
 		log.Error().Msgf("Parsing file Input error: %v", err)
 		return fileInfo, err
 	}
+	inputData.FileHash = hashFile(inputData.FileInput)
+	inputData.FileName = fileInfo.Name()
 
 	log.Info().Msgf("File Name: %s", fileInfo.Name())
 	log.Info().Msgf("File size: %d", fileInfo.Size())
-
-	inputData.FileHash = hashFile(inputData.FileInput)
-	inputData.FileName = fileInfo.Name()
 	log.Info().Msgf("Calculated SHA256 Hash: %v", inputData.FileHash)
 
 	f, err := os.Open(inputData.FileInput)
@@ -148,6 +163,7 @@ func sendParsedPayloadBytes(bytes *[]byte, numBytes int) {
 	writer.Flush()
 }
 
+// Given a valid file path, returns a SHA256 hash
 func hashFile(path string) (hash []byte) {
 	f, err := os.Open(path)
 	defer f.Close()
