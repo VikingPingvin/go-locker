@@ -68,6 +68,7 @@ func (a ArtifactAgent) Start(inputData *InputData) bool {
 	sendProtoBufMessage(connection, message)
 
 	// Send Payload message(s)
+	sendParsedPayloadBytes(connection, inputData)
 
 	return true
 }
@@ -115,7 +116,19 @@ func parseFileMetaData(inputData *InputData) (fileInfo os.FileInfo, err error) {
 	log.Info().
 		Str("file name", fileInfo.Name()).
 		Str("size", fmt.Sprintf("%d", fileInfo.Size())).
-		Str("hash", fmt.Sprintf("%v", inputData.FileHash))
+		Str("hash", fmt.Sprintf("%v", inputData.FileHash)).
+		Msg("Artifact metadata parsing finished")
+
+	return fileInfo, err
+}
+
+//func sendParsedPayloadBytes(bytes *[]byte, numBytes int) {
+func sendParsedPayloadBytes(connection net.Conn, inputData *InputData) {
+	//fw, _ := os.OpenFile("E:\\WorkSpace\\Go\\artifact-server\\readmecopy.channel", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	//defer fw.Close()
+	//writer := bufio.NewWriter(fw)
+	//writer.Write((*bytes)[:numBytes])
+	//writer.Flush()
 
 	f, err := os.Open(inputData.FileInput)
 	defer f.Close()
@@ -123,35 +136,31 @@ func parseFileMetaData(inputData *InputData) (fileInfo os.FileInfo, err error) {
 		log.Error().Msgf("Cannot open file %s", inputData.FileInput)
 	}
 
-	fw, _ := os.Create(inputData.FileInput + "bufwritten")
-	defer fw.Close()
-	writer := bufio.NewWriter(fw)
+	//fw, _ := os.Create(inputData.FileInput + "bufwritten")
+	//defer fw.Close()
+	//writer := bufio.NewWriter(fw)
 	reader := bufio.NewReader(f)
-	bufChannel := make(chan []byte)
 
 	buffer := make([]byte, 1024)
 	for {
 		n, ioErr := reader.Read(buffer)
 		if ioErr == io.EOF {
-			close(bufChannel)
 			break
 		}
-		writer.Write(buffer[:n])
-		//func() { bufChannel <- buffer[:n] }()
-		sendParsedPayloadBytes(&buffer, n)
+		//writer.Write(buffer[:n])
+		log.Info().Msg("Payload protobuf cycle triggered")
+		//sendParsedPayloadBytes(&buffer, n)
+		message, err := server.CreateMessage_FilePackage(
+			2234,
+			protobuf.MessageType_PACKAGE,
+			(buffer)[:n])
+
+		if err != nil {
+			log.Fatal().Msg("Fatal Error during payload protobuf assembly")
+		}
+
+		sendProtoBufMessage(connection, message)
 	}
-
-	writer.Flush()
-
-	return fileInfo, err
-}
-
-func sendParsedPayloadBytes(bytes *[]byte, numBytes int) {
-	fw, _ := os.OpenFile("E:\\WorkSpace\\Go\\artifact-server\\readmecopy.channel", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	defer fw.Close()
-	writer := bufio.NewWriter(fw)
-	writer.Write((*bytes)[:numBytes])
-	writer.Flush()
 }
 
 // Generic protobuf sender that accepts an interface to the defined messages

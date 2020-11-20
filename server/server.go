@@ -52,12 +52,22 @@ func handleConnection(connection net.Conn) {
 	log.Info().Msg("Locker client connected.")
 	defer connection.Close()
 
-	buffer := make([]byte, 1024)
-	connection.Read(buffer)
+	// TODO: Defer closes connection so subsequent messages are not read
+	// BUG ^^
 
+	buffer := make([]byte, 1024)
+	n, _ := connection.Read(buffer)
 	decodedMessage := &protobuf.FileMeta{}
-	//fmt.Printf("Recieved raw Buffer: %v", buffer)
-	proto.Unmarshal(buffer, decodedMessage)
+	if err := proto.Unmarshal(buffer[:n], decodedMessage); err != nil {
+		log.Err(err).Msg("Error during unmarshalling")
+	}
+
+	//bufReader := bufio.NewReader(connection)
+	////connection.Read(readBuffer.Bytes())
+	//bufReader.Read()
+
+	//decodedMessage := &protobuf.FileMeta{}
+	//proto.Unmarshal(readBuffer.Bytes(), decodedMessage)
 
 	log.Info().
 		Str("Artifact Name", decodedMessage.GetFilename()).
