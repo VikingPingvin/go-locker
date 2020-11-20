@@ -17,11 +17,13 @@ Application built with the help of Cobra.
 ### Start server
 > ./locker server
 
+To start Locker in server mode use the `server` command.  
 The server app handles initial configuration and database connection and waits for incoming connections.
 ### Start agent
 > ./locker agent --file="path-to-file"
 
-The agent parses the file given under `--file` and collects metadata, such as sha256 hash.
+To start Locker in Agent mode, use the `agent` command and supply a relative or absolute path to a file.  
+The agent parses the file given under the `--file` flag and collects metadata, such as sha256 hash.
 It sends the metadata to the server, followed by payload messages containing the raw binary file contents.
 
 ## Building
