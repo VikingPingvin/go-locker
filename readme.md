@@ -1,10 +1,8 @@
 # Welcome to Locker!
 
-**Locker** is a GO application meant to be used in CI/CD pipelines as an **artifact blob storage**.
+**Locker** is a GO application meant to be used in CI/CD pipelines as a generic **artifact blob storage**.
 
-Uses TCP/IP connection for sending file metadata and byte stream.
-
-Application can be used both as a server with DB connection and as an agent to send / consume artifacts
+Uses TCP/IP connection for sending file metadata and payload using protobuf between the Agent and the Server, which stores it in a database according to `namespace/project/artifact`.
 
 Application built with the help of Cobra.
 
@@ -15,12 +13,18 @@ Application built with the help of Cobra.
 
 ## Usage example
 
-> go build .
+
 ### Start server
 > ./locker server
-### Starg agent
-> ./locker agent --file=<path-to-file>
 
+The server app handles initial configuration and database connection and waits for incoming connections.
+### Start agent
+> ./locker agent --file="path-to-file"
 
+The agent parses the file given under `--file` and collects metadata, such as sha256 hash.
+It sends the metadata to the server, followed by payload messages containing the raw binary file contents.
 
+## Building
+To build from source:
+> go build .
 
