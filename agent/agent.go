@@ -140,20 +140,32 @@ func sendParsedPayloadBytes(connection net.Conn, inputData *InputData) {
 	//defer fw.Close()
 	//writer := bufio.NewWriter(fw)
 	reader := bufio.NewReader(f)
+	isPayloadFinal := false
 
 	buffer := make([]byte, 1024)
 	for {
 		n, ioErr := reader.Read(buffer)
 		if ioErr == io.EOF {
+			isPayloadFinal = true
+			// Send terminating payload protobuf message
+			terminalMessage, err := server.CreateMessage_FilePackage(
+				2234,
+				protobuf.MessageType_PACKAGE,
+				make([]byte, 1),
+				isPayloadFinal,
+			)
+			if err != nil {
+				log.Fatal().Msg("Fatal Error during payload protobuf assembly")
+			}
+			sendProtoBufMessage(connection, terminalMessage)
 			break
 		}
-		//writer.Write(buffer[:n])
-		log.Info().Msg("Payload protobuf cycle triggered")
-		//sendParsedPayloadBytes(&buffer, n)
+		//log.Debug().Str("payload", fmt.Sprintf("%v", (buffer)[:n])).Msgf("Protobuf Payload Type")
 		message, err := server.CreateMessage_FilePackage(
 			2234,
 			protobuf.MessageType_PACKAGE,
-			(buffer)[:n])
+			(buffer)[:n],
+			isPayloadFinal)
 
 		if err != nil {
 			log.Fatal().Msg("Fatal Error during payload protobuf assembly")
@@ -164,7 +176,8 @@ func sendParsedPayloadBytes(connection net.Conn, inputData *InputData) {
 }
 
 // Generic protobuf sender that accepts an interface to the defined messages
-func sendProtoBufMessage(connection net.Conn, message protoBufMessage) {
+func sendProtoBufMessage(connection net.Conn, message *protobuf.LockerMessage) {
+	log.Debug().Str("Proto_message", fmt.Sprintf("%v", message)).Msg("sendProtoBufMessage")
 	dataToSend, err := proto.Marshal(message)
 	if err != nil {
 		panic(err)
@@ -172,6 +185,7 @@ func sendProtoBufMessage(connection net.Conn, message protoBufMessage) {
 	buffer := new(bytes.Buffer)
 	binary.Write(buffer, binary.BigEndian, dataToSend)
 	connection.Write(buffer.Bytes())
+	log.Debug().Msgf("Protobuf Msg Size: %d", len(buffer.Bytes()))
 }
 
 // Given a valid file path, returns a SHA256 hash

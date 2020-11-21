@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"vikingPingvin/locker/server/protobuf"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/proto"
 )
 
 type connectionType struct {
@@ -25,6 +25,14 @@ type Server interface {
 type ArtifactServer struct {
 	Address string
 	Port    string
+}
+
+// TODO: Duplicate interface (agent.go)
+// Generic Interface for Protobuf messages
+type protoBufMessage interface {
+	ProtoMessage()
+	Reset()
+	String() string
 }
 
 func (s ArtifactServer) Start() bool {
@@ -51,15 +59,41 @@ func (s ArtifactServer) Start() bool {
 func handleConnection(connection net.Conn) {
 	log.Info().Msg("Locker client connected.")
 	defer connection.Close()
+	artifactReceived := false
 
-	// TODO: Defer closes connection so subsequent messages are not read
-	// BUG ^^
+	buffer := make([]byte, 2048)
+	//var protoMessage protoBufMessage
 
-	buffer := make([]byte, 1024)
-	n, _ := connection.Read(buffer)
-	decodedMessage := &protobuf.FileMeta{}
-	if err := proto.Unmarshal(buffer[:n], decodedMessage); err != nil {
-		log.Err(err).Msg("Error during unmarshalling")
+	for artifactReceived != true {
+		n, _ := connection.Read(buffer)
+		if n == 0 {
+			continue
+		}
+		fmt.Printf("BYTES READ: %d\n", n)
+		decodedMessage := &protobuf.LockerMessage{}
+		if err := proto.Unmarshal(buffer[:n], decodedMessage); err != nil {
+			log.Err(err).Msg("Error during unmarshalling")
+		}
+		if decodedMessage.GetMeta().ProtoReflect().IsValid() {
+			fmt.Println("Package is META")
+			log.Info().
+				Str("Artifact Name", decodedMessage.GetMeta().GetFilename()).
+				Str("NameSpace", decodedMessage.GetMeta().GetNamespace()).
+				Str("Project", decodedMessage.GetMeta().GetProject()).
+				Str("hash", fmt.Sprintf("%v", decodedMessage.GetMeta().GetHash())).
+				Msg("Artifact Meta info Recieved")
+		} else if decodedMessage.GetPackage().ProtoReflect().IsValid() {
+			if isPackageFinal := decodedMessage.GetPackage().GetIsTerminated(); isPackageFinal {
+				artifactReceived = true
+				fmt.Println("LAST PACKAGE ARRIVED")
+			}
+			fmt.Println("Package is PAYLOAD")
+		} else {
+			fmt.Println("INVALID PROTOBUF MESSAGE")
+		}
+		//log.Debug().Str("Protobuf_raw", fmt.Sprintf("%v", decodedMessage)).Msg("Recieved Raw msg")
+
+		//protoMessage = decodedMessage
 	}
 
 	//bufReader := bufio.NewReader(connection)
@@ -68,13 +102,6 @@ func handleConnection(connection net.Conn) {
 
 	//decodedMessage := &protobuf.FileMeta{}
 	//proto.Unmarshal(readBuffer.Bytes(), decodedMessage)
-
-	log.Info().
-		Str("Artifact Name", decodedMessage.GetFilename()).
-		Str("NameSpace", decodedMessage.GetNamespace()).
-		Str("Project", decodedMessage.GetProject()).
-		Str("hash", fmt.Sprintf("%v", decodedMessage.GetHash())).
-		Msg("Artifact Meta info Recieved")
 
 	// Create temp file where the payload will be appended
 	createTempFile()

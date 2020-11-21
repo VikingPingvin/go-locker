@@ -48,9 +48,9 @@ func CreateMessage_FileInfo(id int32, messageType pb.MessageType, payload string
 //  msgType
 //  fileName
 //  fileHash
-func CreateMessage_FileMeta(id int32, msgType pb.MessageType, namesSpace string, projectName string, fileName string, fileHash []byte) (message *pb.FileMeta, err error) {
+func CreateMessage_FileMeta(id int32, msgType pb.MessageType, namesSpace string, projectName string, fileName string, fileHash []byte) (protoMessage *pb.LockerMessage, err error) {
 
-	message = &pb.FileMeta{
+	message := &pb.FileMeta{
 		Id:        id,
 		MsgType:   msgType,
 		Namespace: namesSpace,
@@ -59,16 +59,39 @@ func CreateMessage_FileMeta(id int32, msgType pb.MessageType, namesSpace string,
 		Hash:      fileHash,
 	}
 
-	return message, err
-}
-
-func CreateMessage_FilePackage(id int32, msgType pb.MessageType, payload []byte) (message *pb.FilePackage, err error) {
-
-	message = &pb.FilePackage{
-		Id:      id,
-		MsgType: msgType,
-		Payload: payload,
+	test := &pb.LockerMessage_Meta{
+		Meta: message,
 	}
 
-	return message, err
+	testfull := &pb.LockerMessage{
+		Message: test,
+	}
+
+	return testfull, err
+	//protoMessage = &pb.LockerMessage{
+	//	Message: &message,
+	//}
+	//return protoMessage, err
+}
+
+func CreateMessage_FilePackage(id int32, msgType pb.MessageType, payload []byte, isFinalPayload bool) (protoMessage *pb.LockerMessage, err error) {
+
+	//message = &pb.FilePackage{
+	//	Id:      id,
+	//	MsgType: msgType,
+	//	Payload: payload,
+	//}
+
+	protoMessage = &pb.LockerMessage{
+		Message: &pb.LockerMessage_Package{
+			Package: &pb.FilePackage{
+				Id:           id,
+				MsgType:      msgType,
+				Payload:      payload,
+				IsTerminated: isFinalPayload,
+			},
+		},
+	}
+
+	return protoMessage, err
 }
