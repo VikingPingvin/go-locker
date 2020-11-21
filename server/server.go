@@ -1,7 +1,12 @@
 package server
 
 import (
+	"bufio"
+	"bytes"
+	"crypto/sha256"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"os"
@@ -60,51 +65,53 @@ func handleConnection(connection net.Conn) {
 	log.Info().Msg("Locker client connected.")
 	defer connection.Close()
 	artifactReceived := false
+	var artifactPath *os.File
+	var hashInfoFromMeta []byte
 
 	buffer := make([]byte, 2048)
 	//var protoMessage protoBufMessage
 
 	for artifactReceived != true {
 		n, _ := connection.Read(buffer)
-		if n == 0 {
-			continue
-		}
-		fmt.Printf("BYTES READ: %d\n", n)
 		decodedMessage := &protobuf.LockerMessage{}
 		if err := proto.Unmarshal(buffer[:n], decodedMessage); err != nil {
 			log.Err(err).Msg("Error during unmarshalling")
 		}
+
+		// Determine ProtoBuf message using LockerMessage anyof structure
 		if decodedMessage.GetMeta().ProtoReflect().IsValid() {
-			fmt.Println("Package is META")
-			log.Info().
-				Str("Artifact Name", decodedMessage.GetMeta().GetFilename()).
-				Str("NameSpace", decodedMessage.GetMeta().GetNamespace()).
-				Str("Project", decodedMessage.GetMeta().GetProject()).
-				Str("hash", fmt.Sprintf("%v", decodedMessage.GetMeta().GetHash())).
-				Msg("Artifact Meta info Recieved")
+			artifactPath, hashInfoFromMeta = handleProtoMeta(decodedMessage.GetMeta())
 		} else if decodedMessage.GetPackage().ProtoReflect().IsValid() {
-			if isPackageFinal := decodedMessage.GetPackage().GetIsTerminated(); isPackageFinal {
+			packageMessage := decodedMessage.GetPackage()
+			if isPackageFinal := packageMessage.GetIsTerminated(); isPackageFinal {
 				artifactReceived = true
-				fmt.Println("LAST PACKAGE ARRIVED")
+				log.Info().Msg("Artifact fully received")
+				compareArtifactHash(hashInfoFromMeta, artifactPath)
+				break
 			}
-			fmt.Println("Package is PAYLOAD")
+			handleProtoPackage(packageMessage, artifactPath)
 		} else {
 			fmt.Println("INVALID PROTOBUF MESSAGE")
 		}
-		//log.Debug().Str("Protobuf_raw", fmt.Sprintf("%v", decodedMessage)).Msg("Recieved Raw msg")
-
-		//protoMessage = decodedMessage
 	}
 
-	//bufReader := bufio.NewReader(connection)
-	////connection.Read(readBuffer.Bytes())
-	//bufReader.Read()
+}
 
-	//decodedMessage := &protobuf.FileMeta{}
-	//proto.Unmarshal(readBuffer.Bytes(), decodedMessage)
+func handleProtoMeta(metaMessage *protobuf.FileMeta) (file *os.File, hash []byte) {
+	log.Info().
+		Str("Artifact Name", metaMessage.GetFilename()).
+		Str("NameSpace", metaMessage.GetNamespace()).
+		Str("Project", metaMessage.GetProject()).
+		Str("hash", fmt.Sprintf("%v", metaMessage.GetHash())).
+		Msg("Artifact Meta info Recieved")
 
 	// Create temp file where the payload will be appended
-	createTempFile()
+	return createTempFile(), metaMessage.GetHash()
+}
+
+func handleProtoPackage(packageMessage *protobuf.FilePackage, artifactPath *os.File) {
+	//log.Debug().Str("payload", fmt.Sprintf("%s", string(packageMessage.GetPayload()))).Msg("Payload")
+	writePayloadToFile(artifactPath, packageMessage.GetPayload())
 }
 
 func createTempFile() *os.File {
@@ -124,6 +131,48 @@ func createTempFile() *os.File {
 	}
 	defer tmpArtifact.Close()
 	return tmpArtifact
+}
+
+func writePayloadToFile(filePath *os.File, payload []byte) {
+	if filePath == nil {
+		log.Err(errors.New("File pointer is empty. Can't write payload.")).Msg("Error writing payload. Maybe file handle is not created during META parsing.")
+		os.Exit(111)
+	}
+	f, err := os.OpenFile(filePath.Name(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	defer f.Close()
+	if err != nil {
+		log.Err(err).Msg("Error opening file for writing payload contents")
+	}
+	//fmt.Printf("%v", payload)
+	writer := bufio.NewWriter(f)
+	writer.Write(payload)
+	writer.Flush()
+}
+
+// TODO: Duplicate hash command from agent.go:/hashFile
+// Given a valid file path, returns a SHA256 hash
+func hashFile(path string) (hash []byte) {
+	f, err := os.Open(path)
+	defer f.Close()
+	if err != nil {
+		log.Err(err).Msgf("Cannot open file %s", path)
+	}
+
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, f); err != nil {
+		log.Err(err).Msg("Error calculating SHA256 Hash")
+	}
+	return hasher.Sum(nil)
+}
+
+func compareArtifactHash(hashFromMeta []byte, tempPath *os.File) {
+	calculatedHash := hashFile(tempPath.Name())
+
+	if bytes.Compare(calculatedHash, hashFromMeta) == 0 {
+		log.Info().Msg("Recieved Payload Hash is valid!")
+	} else {
+		log.Info().Msg("Recieved Payload Hash is Invalid!")
+	}
 }
 
 // ExecuteServer : Entrypoint for Locker server start
