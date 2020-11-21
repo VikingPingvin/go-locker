@@ -27,7 +27,15 @@ message FilePackage{
     int32 id = 1;
     MessageType msgType = 2;
     bytes payload = 3;
+    bool isTerminated = 4;
 
+}
+
+message LockerMessage{
+    oneof message {
+        FileMeta meta = 1;
+        FilePackage package = 2;
+    }
 }
 
 message TestMessage{
