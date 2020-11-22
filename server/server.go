@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"time"
 	"vikingPingvin/locker/server/protobuf"
 
 	"github.com/rs/zerolog/log"
@@ -63,15 +64,20 @@ func (s ArtifactServer) Start() bool {
 
 func handleConnection(connection net.Conn) {
 	log.Info().Msg("Locker client connected.")
-	defer connection.Close()
+	defer func() {
+		connection.Close()
+		log.Info().Msg("Connection closing...")
+	}()
 	artifactReceived := false
 	var artifactPath *os.File
 	var hashInfoFromMeta []byte
+	timeoutDuration := 5 * time.Second
 
 	buffer := make([]byte, 2048)
 	//var protoMessage protoBufMessage
 
 	for artifactReceived != true {
+		connection.SetReadDeadline(time.Now().Add(timeoutDuration))
 		n, _ := connection.Read(buffer)
 		decodedMessage := &protobuf.LockerMessage{}
 		if err := proto.Unmarshal(buffer[:n], decodedMessage); err != nil {
@@ -130,6 +136,7 @@ func createTempFile() *os.File {
 		log.Err(err).Str("tempfile", "ioutil").Msg("Error creating temp file on path")
 	}
 	defer tmpArtifact.Close()
+	log.Debug().Msgf("Using temp file: %s", tmpArtifact.Name())
 	return tmpArtifact
 }
 
