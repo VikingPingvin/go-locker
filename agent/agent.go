@@ -52,7 +52,6 @@ func (a ArtifactAgent) Start(inputData *InputData) bool {
 	defer connection.Close()
 	log.Info().Msg("Agent connected to Locker Server...")
 
-	//message, err := server.CreateMessage_FileInfo(123, protobuf.MessageType_META, "Test string valami content field-ben...")
 	message, err := server.CreateMessage_FileMeta(
 		2234,
 		protobuf.MessageType_META,
@@ -125,11 +124,6 @@ func parseFileMetaData(inputData *InputData) (fileInfo os.FileInfo, err error) {
 
 //func sendParsedPayloadBytes(bytes *[]byte, numBytes int) {
 func sendParsedPayloadBytes(connection net.Conn, inputData *InputData) {
-	//fw, _ := os.OpenFile("E:\\WorkSpace\\Go\\artifact-server\\readmecopy.channel", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	//defer fw.Close()
-	//writer := bufio.NewWriter(fw)
-	//writer.Write((*bytes)[:numBytes])
-	//writer.Flush()
 
 	f, err := os.Open(inputData.FileInput)
 	defer f.Close()
@@ -159,7 +153,7 @@ func sendParsedPayloadBytes(connection net.Conn, inputData *InputData) {
 			sendProtoBufMessage(connection, terminalMessage)
 			break
 		}
-		//log.Debug().Str("payload", fmt.Sprintf("%v", (buffer)[:n])).Msgf("Protobuf Payload Type")
+
 		message, err := server.CreateMessage_FilePackage(
 			2234,
 			protobuf.MessageType_PACKAGE,
@@ -177,8 +171,6 @@ func sendParsedPayloadBytes(connection net.Conn, inputData *InputData) {
 
 // Generic protobuf sender that accepts an interface to the defined messages
 func sendProtoBufMessage(connection net.Conn, message *protobuf.LockerMessage) {
-	//log.Debug().Str("Proto_message", fmt.Sprintf("%v", message)).Msg("sendProtoBufMessage")
-
 	sizePrefix := make([]byte, 4)
 	dataToSend, err := proto.Marshal(message)
 	if err != nil {

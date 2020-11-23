@@ -82,8 +82,6 @@ func handleConnection(connection net.Conn) {
 
 	for artifactReceived != true {
 		connection.SetReadDeadline(time.Now().Add(timeoutDuration))
-		//n, _ := connection.Read(payloadBuffer)
-		//bufReader := bufio.NewReader(connection).ReadBytes()
 
 		_, _ = io.ReadFull(connection, sizePrefix)
 		protoLength := int(binary.BigEndian.Uint32(sizePrefix))
@@ -100,7 +98,7 @@ func handleConnection(connection net.Conn) {
 		_, _ = io.ReadFull(connection, nextPacket[:protoLength])
 
 		decodedMessage := &protobuf.LockerMessage{}
-		if err := proto.Unmarshal(nextPacket, decodedMessage); err != nil {
+		if err := proto.Unmarshal(nextPacket[:protoLength], decodedMessage); err != nil {
 			log.Err(err).Msg("Error during unmarshalling")
 		}
 
@@ -142,7 +140,6 @@ func handleProtoMeta(metaMessage *protobuf.FileMeta) (file *os.File, hash []byte
 }
 
 func handleProtoPackage(packageMessage *protobuf.FilePackage, artifactPath *os.File) {
-	//log.Debug().Str("payload", fmt.Sprintf("%s", string(packageMessage.GetPayload()))).Msg("Payload")
 	writePayloadToFile(artifactPath, packageMessage.GetPayload())
 }
 
