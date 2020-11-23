@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -63,7 +64,7 @@ func (s ArtifactServer) Start() bool {
 }
 
 func handleConnection(connection net.Conn) {
-	log.Info().Msg("Locker client connected.")
+	log.Info().Msgf("Locker client connected: %s", connection.RemoteAddr().String())
 	defer func() {
 		connection.Close()
 		log.Info().Msg("Connection closing...")
@@ -72,15 +73,34 @@ func handleConnection(connection net.Conn) {
 	var artifactPath *os.File
 	var hashInfoFromMeta []byte
 	timeoutDuration := 5 * time.Second
+	invalidCounterMax := 10
+	invalidCounter := 0
 
-	buffer := make([]byte, 2048)
-	//var protoMessage protoBufMessage
+	//payloadBuffer := make([]byte, 2048)
+	sizePrefix := make([]byte, 4)
+	nextPacket := make([]byte, 1)
 
 	for artifactReceived != true {
 		connection.SetReadDeadline(time.Now().Add(timeoutDuration))
-		n, _ := connection.Read(buffer)
+		//n, _ := connection.Read(payloadBuffer)
+		//bufReader := bufio.NewReader(connection).ReadBytes()
+
+		_, _ = io.ReadFull(connection, sizePrefix)
+		protoLength := int(binary.BigEndian.Uint32(sizePrefix))
+
+		if protoLength > cap(nextPacket) {
+			// Extend buffer size
+			nextPacket = make([]byte, protoLength, 2*protoLength)
+			nextPacket = nextPacket[:protoLength]
+		} else if protoLength > len(nextPacket) {
+			nextPacket = nextPacket[:protoLength]
+		}
+
+		//nextPacket := make([]byte, protoLength)
+		_, _ = io.ReadFull(connection, nextPacket[:protoLength])
+
 		decodedMessage := &protobuf.LockerMessage{}
-		if err := proto.Unmarshal(buffer[:n], decodedMessage); err != nil {
+		if err := proto.Unmarshal(nextPacket, decodedMessage); err != nil {
 			log.Err(err).Msg("Error during unmarshalling")
 		}
 
@@ -89,7 +109,7 @@ func handleConnection(connection net.Conn) {
 			artifactPath, hashInfoFromMeta = handleProtoMeta(decodedMessage.GetMeta())
 		} else if decodedMessage.GetPackage().ProtoReflect().IsValid() {
 			packageMessage := decodedMessage.GetPackage()
-			if isPackageFinal := packageMessage.GetIsTerminated(); isPackageFinal {
+			if isPackageFinal := packageMessage.GetIsTerminated(); isPackageFinal == true {
 				artifactReceived = true
 				log.Info().Msg("Artifact fully received")
 				compareArtifactHash(hashInfoFromMeta, artifactPath)
@@ -97,7 +117,13 @@ func handleConnection(connection net.Conn) {
 			}
 			handleProtoPackage(packageMessage, artifactPath)
 		} else {
+			if invalidCounter >= invalidCounterMax {
+				log.Err(errors.New("Too many Invalid packets received")).Msg("Terminating connection")
+				return
+			}
+			invalidCounter++
 			fmt.Println("INVALID PROTOBUF MESSAGE")
+
 		}
 	}
 

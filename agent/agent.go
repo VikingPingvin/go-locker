@@ -65,6 +65,7 @@ func (a ArtifactAgent) Start(inputData *InputData) bool {
 	}
 
 	// Send Metadata message
+	log.Info().Msg("Sending MetaData Packet")
 	sendProtoBufMessage(connection, message)
 
 	// Send Payload message(s)
@@ -136,9 +137,7 @@ func sendParsedPayloadBytes(connection net.Conn, inputData *InputData) {
 		log.Error().Msgf("Cannot open file %s", inputData.FileInput)
 	}
 
-	//fw, _ := os.Create(inputData.FileInput + "bufwritten")
-	//defer fw.Close()
-	//writer := bufio.NewWriter(fw)
+	log.Info().Msg("Started sending Payload Packets...")
 	reader := bufio.NewReader(f)
 	isPayloadFinal := false
 
@@ -173,19 +172,30 @@ func sendParsedPayloadBytes(connection net.Conn, inputData *InputData) {
 
 		sendProtoBufMessage(connection, message)
 	}
+	log.Info().Msg("Finished sending Payload Packets...")
 }
 
 // Generic protobuf sender that accepts an interface to the defined messages
 func sendProtoBufMessage(connection net.Conn, message *protobuf.LockerMessage) {
-	log.Debug().Str("Proto_message", fmt.Sprintf("%v", message)).Msg("sendProtoBufMessage")
+	//log.Debug().Str("Proto_message", fmt.Sprintf("%v", message)).Msg("sendProtoBufMessage")
+
+	sizePrefix := make([]byte, 4)
 	dataToSend, err := proto.Marshal(message)
 	if err != nil {
 		panic(err)
 	}
+
+	// Write Proto Packet Data
 	buffer := new(bytes.Buffer)
 	binary.Write(buffer, binary.BigEndian, dataToSend)
+
+	// Prepend 4 bytes of Proto Packet Size
+	binary.BigEndian.PutUint32(sizePrefix, uint32(len(buffer.Bytes())))
+	connection.Write(sizePrefix)
+
+	// Send Packet
 	connection.Write(buffer.Bytes())
-	log.Debug().Msgf("Protobuf Msg Size: %d", len(buffer.Bytes()))
+	//log.Debug().Msgf("Protobuf Msg Size: %d", len(buffer.Bytes()))
 }
 
 // Given a valid file path, returns a SHA256 hash
