@@ -1,7 +1,13 @@
-package server
+package messaging
 
 import (
-	pb "vikingPingvin/locker/server/protobuf"
+	"bytes"
+	"encoding/binary"
+	"net"
+	"vikingPingvin/locker/locker/messaging/protobuf"
+	pb "vikingPingvin/locker/locker/messaging/protobuf"
+
+	"google.golang.org/protobuf/proto"
 )
 
 func CreateMessage_ServerACk(id int32, messageType pb.MessageType, isSuccess bool) (protoMessage *pb.LockerMessage, err error) {
@@ -56,4 +62,24 @@ func CreateMessage_FilePackage(id int32, msgType pb.MessageType, payload []byte,
 	}
 
 	return protoMessage, err
+}
+
+// SendProtoBufMessage Generic protobuf sender that accepts an interface to the defined messages
+func SendProtoBufMessage(connection net.Conn, message *protobuf.LockerMessage) {
+	sizePrefix := make([]byte, 4)
+	dataToSend, err := proto.Marshal(message)
+	if err != nil {
+		panic(err)
+	}
+
+	// Write Proto Packet Data
+	buffer := new(bytes.Buffer)
+	binary.Write(buffer, binary.BigEndian, dataToSend)
+
+	// Prepend 4 bytes of Proto Packet Size
+	binary.BigEndian.PutUint32(sizePrefix, uint32(len(buffer.Bytes())))
+	connection.Write(sizePrefix)
+
+	// Send Packet
+	connection.Write(buffer.Bytes())
 }

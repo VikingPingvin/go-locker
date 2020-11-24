@@ -1,9 +1,8 @@
-package server
+package locker
 
 import (
 	"bufio"
 	"bytes"
-	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -13,7 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-	"vikingPingvin/locker/server/protobuf"
+	"vikingPingvin/locker/locker/messaging/protobuf"
 
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
@@ -38,14 +37,6 @@ type Server interface {
 type ArtifactServer struct {
 	Address string
 	Port    string
-}
-
-// TODO: Duplicate interface (agent.go)
-// Generic Interface for Protobuf messages
-type protoBufMessage interface {
-	ProtoMessage()
-	Reset()
-	String() string
 }
 
 func (s ArtifactServer) Start() bool {
@@ -221,19 +212,19 @@ func writePayloadToFile(writer *bufio.Writer, payload *protobuf.FilePackage, wri
 
 // TODO: Duplicate hash command from agent.go:/hashFile
 // Given a valid file path, returns a SHA256 hash
-func hashFile(path string) (hash []byte) {
-	f, err := os.Open(path)
-	defer f.Close()
-	if err != nil {
-		log.Err(err).Msgf("Cannot open file %s", path)
-	}
-
-	hasher := sha256.New()
-	if _, err := io.Copy(hasher, f); err != nil {
-		log.Err(err).Msg("Error calculating SHA256 Hash")
-	}
-	return hasher.Sum(nil)
-}
+//func hashFile(path string) (hash []byte) {
+//	f, err := os.Open(path)
+//	defer f.Close()
+//	if err != nil {
+//		log.Err(err).Msgf("Cannot open file %s", path)
+//	}
+//
+//	hasher := sha256.New()
+//	if _, err := io.Copy(hasher, f); err != nil {
+//		log.Err(err).Msg("Error calculating SHA256 Hash")
+//	}
+//	return hasher.Sum(nil)
+//}
 
 func compareArtifactHash(hashFromMeta []byte, tempPath *os.File) bool {
 	calculatedHash := hashFile(tempPath.Name())

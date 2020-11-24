@@ -16,7 +16,7 @@ limitations under the License.
 package cmd
 
 import (
-	"vikingPingvin/locker/agent"
+	"vikingPingvin/locker/locker"
 
 	"github.com/spf13/cobra"
 )
@@ -27,7 +27,7 @@ var agentCmd = &cobra.Command{
 	Short: "Start Locker in Agent mode",
 	Long:  `locker agent`,
 	Run: func(cmd *cobra.Command, args []string) {
-		agent.ExecuteAgent()
+		locker.ExecuteAgent()
 	},
 }
 
@@ -43,5 +43,5 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// agentCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	agentCmd.Flags().StringVar(&agent.InputArg, "file", "", "Specify path for input artifact file")
+	agentCmd.Flags().StringVar(&locker.InputArg, "file", "", "Specify path for input artifact file")
 }

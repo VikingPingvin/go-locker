@@ -1,20 +1,18 @@
-package agent
+package locker
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/sha256"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"os"
 	"path/filepath"
-	"vikingPingvin/locker/server"
-	"vikingPingvin/locker/server/protobuf"
 
-	"github.com/golang/protobuf/proto"
+	"vikingPingvin/locker/locker/messaging"
+	"vikingPingvin/locker/locker/messaging/protobuf"
+
 	"github.com/rs/zerolog/log"
 )
 
@@ -35,13 +33,6 @@ type Agent interface {
 
 type ArtifactAgent struct {
 	Port string
-}
-
-// Generic Interface for Protobuf messages
-type protoBufMessage interface {
-	ProtoMessage()
-	Reset()
-	String() string
 }
 
 func (a ArtifactAgent) Start(inputData *InputData) bool {
@@ -80,7 +71,7 @@ func parseAndSendMetaData(connection net.Conn, inputData *InputData) (fileInfo o
 		Str("hash", fmt.Sprintf("%v", inputData.FileHash)).
 		Msg("Artifact metadata parsing finished")
 
-	message, err := server.CreateMessage_FileMeta(
+	message, err := messaging.CreateMessage_FileMeta(
 		2234,
 		protobuf.MessageType_META,
 		"test_namespace",
@@ -93,7 +84,7 @@ func parseAndSendMetaData(connection net.Conn, inputData *InputData) (fileInfo o
 
 	// Send Metadata message
 	log.Info().Msg("Sending MetaData Packet")
-	sendProtoBufMessage(connection, message)
+	messaging.SendProtoBufMessage(connection, message)
 
 	return fileInfo, err
 }
@@ -117,7 +108,7 @@ func parseAndSendPayload(connection net.Conn, inputData *InputData) {
 		if ioErr == io.EOF {
 			isPayloadFinal = true
 			// Send terminating payload protobuf message
-			terminalMessage, err := server.CreateMessage_FilePackage(
+			terminalMessage, err := messaging.CreateMessage_FilePackage(
 				2234,
 				protobuf.MessageType_PACKAGE,
 				make([]byte, 1),
@@ -126,11 +117,11 @@ func parseAndSendPayload(connection net.Conn, inputData *InputData) {
 			if err != nil {
 				log.Fatal().Msg("Fatal Error during payload protobuf assembly")
 			}
-			sendProtoBufMessage(connection, terminalMessage)
+			messaging.SendProtoBufMessage(connection, terminalMessage)
 			break
 		}
 
-		message, err := server.CreateMessage_FilePackage(
+		message, err := messaging.CreateMessage_FilePackage(
 			2234,
 			protobuf.MessageType_PACKAGE,
 			(buffer)[:n],
@@ -140,29 +131,9 @@ func parseAndSendPayload(connection net.Conn, inputData *InputData) {
 			log.Fatal().Msg("Fatal Error during payload protobuf assembly")
 		}
 
-		sendProtoBufMessage(connection, message)
+		messaging.SendProtoBufMessage(connection, message)
 	}
 	log.Info().Msg("Finished sending Payload Packets...")
-}
-
-// Generic protobuf sender that accepts an interface to the defined messages
-func sendProtoBufMessage(connection net.Conn, message *protobuf.LockerMessage) {
-	sizePrefix := make([]byte, 4)
-	dataToSend, err := proto.Marshal(message)
-	if err != nil {
-		panic(err)
-	}
-
-	// Write Proto Packet Data
-	buffer := new(bytes.Buffer)
-	binary.Write(buffer, binary.BigEndian, dataToSend)
-
-	// Prepend 4 bytes of Proto Packet Size
-	binary.BigEndian.PutUint32(sizePrefix, uint32(len(buffer.Bytes())))
-	connection.Write(sizePrefix)
-
-	// Send Packet
-	connection.Write(buffer.Bytes())
 }
 
 // Given a valid file path, returns a SHA256 hash
