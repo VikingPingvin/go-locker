@@ -52,6 +52,34 @@ func (a ArtifactAgent) Start(inputData *InputData) bool {
 	defer connection.Close()
 	log.Info().Msg("Agent connected to Locker Server...")
 
+	// Send Metadata message
+	parseAndSendMetaData(connection, inputData)
+
+	// Send Payload message(s)
+	parseAndSendPayload(connection, inputData)
+
+	// Listen for ACK from server
+	listenForACK(connection)
+
+	return true
+}
+
+// If --file cli input is not null, parse file
+func parseAndSendMetaData(connection net.Conn, inputData *InputData) (fileInfo os.FileInfo, err error) {
+	fileInfo, err = os.Stat(inputData.FileInput)
+	if os.IsNotExist(err) {
+		log.Error().Msgf("Parsing file Input error: %v", err)
+		return fileInfo, err
+	}
+	inputData.FileHash = hashFile(inputData.FileInput)
+	inputData.FileName = fileInfo.Name()
+
+	log.Info().
+		Str("file name", fileInfo.Name()).
+		Str("size", fmt.Sprintf("%d", fileInfo.Size())).
+		Str("hash", fmt.Sprintf("%v", inputData.FileHash)).
+		Msg("Artifact metadata parsing finished")
+
 	message, err := server.CreateMessage_FileMeta(
 		2234,
 		protobuf.MessageType_META,
@@ -67,63 +95,11 @@ func (a ArtifactAgent) Start(inputData *InputData) bool {
 	log.Info().Msg("Sending MetaData Packet")
 	sendProtoBufMessage(connection, message)
 
-	// Send Payload message(s)
-	sendParsedPayloadBytes(connection, inputData)
-
-	return true
-}
-
-// Parse raw CLI input parameters to internal data structures
-func parseInputArguments() *InputData {
-	var err error
-	var inputPath string
-
-	if len(InputArg) == 0 {
-		err = errors.New("--file empty")
-		log.Err(err).Str("agent", "parseInputArguments").Msgf("No input file was given.")
-	}
-	if err != nil {
-		os.Exit(1)
-	}
-
-	inputPath = InputArg
-	if !filepath.IsAbs(InputArg) {
-		cwd, err := os.Getwd()
-		if err != nil {
-			log.Err(err).Msg("Error during CWD PATH parsing")
-			os.Exit(1)
-		}
-		log.Debug().Msgf("Relative path of input: %s", InputArg)
-		inputPath = filepath.Join(cwd, InputArg)
-
-	}
-	data := &InputData{
-		FileInput: inputPath,
-	}
-	return data
-}
-
-// If --file cli input is not null, parse file
-func parseFileMetaData(inputData *InputData) (fileInfo os.FileInfo, err error) {
-	fileInfo, err = os.Stat(inputData.FileInput)
-	if os.IsNotExist(err) {
-		log.Error().Msgf("Parsing file Input error: %v", err)
-		return fileInfo, err
-	}
-	inputData.FileHash = hashFile(inputData.FileInput)
-	inputData.FileName = fileInfo.Name()
-
-	log.Info().
-		Str("file name", fileInfo.Name()).
-		Str("size", fmt.Sprintf("%d", fileInfo.Size())).
-		Str("hash", fmt.Sprintf("%v", inputData.FileHash)).
-		Msg("Artifact metadata parsing finished")
-
 	return fileInfo, err
 }
 
-//func sendParsedPayloadBytes(bytes *[]byte, numBytes int) {
-func sendParsedPayloadBytes(connection net.Conn, inputData *InputData) {
+//func parseAndSendPayload(bytes *[]byte, numBytes int) {
+func parseAndSendPayload(connection net.Conn, inputData *InputData) {
 
 	f, err := os.Open(inputData.FileInput)
 	defer f.Close()
@@ -187,7 +163,6 @@ func sendProtoBufMessage(connection net.Conn, message *protobuf.LockerMessage) {
 
 	// Send Packet
 	connection.Write(buffer.Bytes())
-	//log.Debug().Msgf("Protobuf Msg Size: %d", len(buffer.Bytes()))
 }
 
 // Given a valid file path, returns a SHA256 hash
@@ -205,12 +180,44 @@ func hashFile(path string) (hash []byte) {
 	return hasher.Sum(nil)
 }
 
+func listenForACK(connection net.Conn) {
+
+}
+
+// Parse raw CLI input parameters to internal data structures
+func parseInputArguments() *InputData {
+	var err error
+	var inputPath string
+
+	if len(InputArg) == 0 {
+		err = errors.New("--file empty")
+		log.Err(err).Str("agent", "parseInputArguments").Msgf("No input file was given.")
+	}
+	if err != nil {
+		os.Exit(1)
+	}
+
+	inputPath = InputArg
+	if !filepath.IsAbs(InputArg) {
+		cwd, err := os.Getwd()
+		if err != nil {
+			log.Err(err).Msg("Error during CWD PATH parsing")
+			os.Exit(1)
+		}
+		log.Debug().Msgf("Relative path of input: %s", InputArg)
+		inputPath = filepath.Join(cwd, InputArg)
+
+	}
+	data := &InputData{
+		FileInput: inputPath,
+	}
+	return data
+}
+
 // ExecuteAgent : Entrypoint for Locker agent start
 func ExecuteAgent() {
 	// Handle input flags
 	inputData := parseInputArguments()
-
-	parseFileMetaData(inputData)
 
 	// Start Agent
 	agent := &ArtifactAgent{Port: "27001"}

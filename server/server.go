@@ -24,6 +24,12 @@ type connectionType struct {
 	intent int
 }
 
+// Struct containing file data from received MetaData message
+type metaInfo struct {
+	fileHash []byte
+	fileName string
+}
+
 type Server interface {
 	Start() bool
 	Stop() bool
@@ -74,7 +80,9 @@ func handleConnection(connection net.Conn) {
 	artifactReceived := false
 	var artifactPath *os.File
 
-	var hashInfoFromMeta []byte
+	metaData := metaInfo{}
+
+	//var hashInfoFromMeta []byte
 	timeoutDuration := 5 * time.Second
 	invalidCounterMax := 10
 	invalidCounter := 0
@@ -90,12 +98,10 @@ func handleConnection(connection net.Conn) {
 	nextPacket := make([]byte, 1)
 
 	defer func() {
-		//writer.Write(writeFileBuffer)
-		//writer.Flush()
 		artifactPath.Close()
 
 		elapsedTime := time.Since(timeStart)
-		log.Debug().Msgf("Client Connection took: %s time", elapsedTime)
+		log.Debug().Msgf("Client Connection took: %s", elapsedTime)
 	}()
 
 	for artifactReceived != true {
@@ -112,7 +118,6 @@ func handleConnection(connection net.Conn) {
 			nextPacket = nextPacket[:protoLength]
 		}
 
-		//nextPacket := make([]byte, protoLength)
 		_, _ = io.ReadFull(connection, nextPacket[:protoLength])
 
 		decodedMessage := &protobuf.LockerMessage{}
@@ -122,20 +127,20 @@ func handleConnection(connection net.Conn) {
 
 		// Determine ProtoBuf message using LockerMessage anyof structure
 		if decodedMessage.GetMeta().ProtoReflect().IsValid() {
-			artifactPath, hashInfoFromMeta = handleProtoMeta(decodedMessage.GetMeta())
+			artifactPath, metaData = handleProtoMeta(decodedMessage.GetMeta())
 			writer = bufio.NewWriter(artifactPath)
+
 		} else if decodedMessage.GetPackage().ProtoReflect().IsValid() {
 			packageMessage := decodedMessage.GetPackage()
+
+			// If received the last payload package, flush and close the tmp file
 			if isPackageFinal := packageMessage.GetIsTerminated(); isPackageFinal == true {
 				artifactReceived = true
-				log.Info().Msg("Artifact fully received")
-				// Flush write Buffer and close tmp file
+				log.Info().Msg("Artifact payload received")
+
 				writer.Write(writeFileBuffer)
 				writer.Flush()
 				artifactPath.Close()
-
-				// Calculate Hash of tmp file
-				compareArtifactHash(hashInfoFromMeta, artifactPath)
 				break
 			}
 			handleProtoPackage(packageMessage, writer, &writeFileBuffer)
@@ -150,9 +155,18 @@ func handleConnection(connection net.Conn) {
 		}
 	}
 
+	// Calculate Hash of tmp file
+	if compareArtifactHash(metaData.fileHash, artifactPath) {
+		//Rename file
+		baseDir := filepath.Dir(artifactPath.Name())
+		newPath := filepath.Join(baseDir, metaData.fileName)
+		os.Rename(artifactPath.Name(), newPath)
+		log.Info().Msgf("Artifact ready: %s", newPath)
+
+	}
 }
 
-func handleProtoMeta(metaMessage *protobuf.FileMeta) (file *os.File, hash []byte) {
+func handleProtoMeta(metaMessage *protobuf.FileMeta) (file *os.File, metaData metaInfo) {
 	log.Info().
 		Str("Artifact Name", metaMessage.GetFilename()).
 		Str("NameSpace", metaMessage.GetNamespace()).
@@ -160,8 +174,11 @@ func handleProtoMeta(metaMessage *protobuf.FileMeta) (file *os.File, hash []byte
 		Str("hash", fmt.Sprintf("%v", metaMessage.GetHash())).
 		Msg("Artifact Meta info Recieved")
 
+	metaData.fileHash = metaMessage.GetHash()
+	metaData.fileName = metaMessage.GetFilename()
+
 	// Create temp file where the payload will be appended
-	return createTempFile(), metaMessage.GetHash()
+	return createTempFile(), metaData
 }
 
 func handleProtoPackage(packageMessage *protobuf.FilePackage, writer *bufio.Writer, writeFileBuffer *[]byte) {
@@ -183,7 +200,6 @@ func createTempFile() *os.File {
 	if err != nil {
 		log.Err(err).Str("tempfile", "ioutil").Msg("Error creating temp file on path")
 	}
-	//defer tmpArtifact.Close()
 	log.Debug().Msgf("Using temp file: %s", tmpArtifact.Name())
 	return tmpArtifact
 }
@@ -193,7 +209,6 @@ func writePayloadToFile(writer *bufio.Writer, payload *protobuf.FilePackage, wri
 	// If payload > len + cap: flush io and reslice to size 0
 	payloadBytes := payload.GetPayload()
 	if len(payloadBytes) > len(*writeFileBuffer)+cap(*writeFileBuffer) {
-		//writer := bufio.NewWriter(filePath)
 		writer.Write(*writeFileBuffer)
 		writer.Flush()
 
@@ -220,13 +235,15 @@ func hashFile(path string) (hash []byte) {
 	return hasher.Sum(nil)
 }
 
-func compareArtifactHash(hashFromMeta []byte, tempPath *os.File) {
+func compareArtifactHash(hashFromMeta []byte, tempPath *os.File) bool {
 	calculatedHash := hashFile(tempPath.Name())
 
 	if bytes.Compare(calculatedHash, hashFromMeta) == 0 {
 		log.Info().Msg("Recieved Payload Hash is valid!")
+		return true
 	} else {
 		log.Info().Msg("Recieved Payload Hash is Invalid!")
+		return false
 	}
 }
 

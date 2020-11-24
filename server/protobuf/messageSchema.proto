@@ -8,12 +8,6 @@ enum MessageType{
     ACK = 2;
 }
 
-message FileInfo {
-    int32 id = 1;    
-    MessageType msgType = 2;   
-    string payload = 3;
-}
-
 message FileMeta{
     int32 id = 1;
     MessageType msgType = 2; 
@@ -31,16 +25,16 @@ message FilePackage{
 
 }
 
+message ServerAck{
+    int32 id = 1;
+    MessageType msgType = 2;
+    bool serverSuccess = 3;
+}
+
 message LockerMessage{
     oneof message {
         FileMeta meta = 1;
         FilePackage package = 2;
+        ServerAck ack = 3;
     }
-}
-
-message TestMessage{
-    int32 id = 1;
-    string string = 2;
-    uint32 uint = 3;
-    MessageType enum = 4;
 }
