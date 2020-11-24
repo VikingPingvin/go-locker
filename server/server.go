@@ -60,25 +60,43 @@ func (s ArtifactServer) Start() bool {
 		}
 
 		go handleConnection(connection)
+
 	}
 }
 
 func handleConnection(connection net.Conn) {
 	log.Info().Msgf("Locker client connected: %s", connection.RemoteAddr().String())
+	timeStart := time.Now()
 	defer func() {
 		connection.Close()
 		log.Info().Msg("Connection closing...")
 	}()
 	artifactReceived := false
 	var artifactPath *os.File
+
 	var hashInfoFromMeta []byte
 	timeoutDuration := 5 * time.Second
 	invalidCounterMax := 10
 	invalidCounter := 0
 
-	//payloadBuffer := make([]byte, 2048)
+	// writeFileBuffer defaults to 1 Mb, used for disk IO flushing
+	writeFileBuffer := make([]byte, 0, 1000000)
+
+	var writer *bufio.Writer
+
+	// sizePrefix is 4 bytes protobug message size
 	sizePrefix := make([]byte, 4)
+	// nextPacket auto expanding slice, contains a protobuf packet
 	nextPacket := make([]byte, 1)
+
+	defer func() {
+		//writer.Write(writeFileBuffer)
+		//writer.Flush()
+		artifactPath.Close()
+
+		elapsedTime := time.Since(timeStart)
+		log.Debug().Msgf("Client Connection took: %s time", elapsedTime)
+	}()
 
 	for artifactReceived != true {
 		connection.SetReadDeadline(time.Now().Add(timeoutDuration))
@@ -105,15 +123,22 @@ func handleConnection(connection net.Conn) {
 		// Determine ProtoBuf message using LockerMessage anyof structure
 		if decodedMessage.GetMeta().ProtoReflect().IsValid() {
 			artifactPath, hashInfoFromMeta = handleProtoMeta(decodedMessage.GetMeta())
+			writer = bufio.NewWriter(artifactPath)
 		} else if decodedMessage.GetPackage().ProtoReflect().IsValid() {
 			packageMessage := decodedMessage.GetPackage()
 			if isPackageFinal := packageMessage.GetIsTerminated(); isPackageFinal == true {
 				artifactReceived = true
 				log.Info().Msg("Artifact fully received")
+				// Flush write Buffer and close tmp file
+				writer.Write(writeFileBuffer)
+				writer.Flush()
+				artifactPath.Close()
+
+				// Calculate Hash of tmp file
 				compareArtifactHash(hashInfoFromMeta, artifactPath)
 				break
 			}
-			handleProtoPackage(packageMessage, artifactPath)
+			handleProtoPackage(packageMessage, writer, &writeFileBuffer)
 		} else {
 			if invalidCounter >= invalidCounterMax {
 				log.Err(errors.New("Too many Invalid packets received")).Msg("Terminating connection")
@@ -139,8 +164,8 @@ func handleProtoMeta(metaMessage *protobuf.FileMeta) (file *os.File, hash []byte
 	return createTempFile(), metaMessage.GetHash()
 }
 
-func handleProtoPackage(packageMessage *protobuf.FilePackage, artifactPath *os.File) {
-	writePayloadToFile(artifactPath, packageMessage.GetPayload())
+func handleProtoPackage(packageMessage *protobuf.FilePackage, writer *bufio.Writer, writeFileBuffer *[]byte) {
+	writePayloadToFile(writer, packageMessage, writeFileBuffer)
 }
 
 func createTempFile() *os.File {
@@ -158,25 +183,25 @@ func createTempFile() *os.File {
 	if err != nil {
 		log.Err(err).Str("tempfile", "ioutil").Msg("Error creating temp file on path")
 	}
-	defer tmpArtifact.Close()
+	//defer tmpArtifact.Close()
 	log.Debug().Msgf("Using temp file: %s", tmpArtifact.Name())
 	return tmpArtifact
 }
 
-func writePayloadToFile(filePath *os.File, payload []byte) {
-	if filePath == nil {
-		log.Err(errors.New("File pointer is empty. Can't write payload.")).Msg("Error writing payload. Maybe file handle is not created during META parsing.")
-		os.Exit(111)
+func writePayloadToFile(writer *bufio.Writer, payload *protobuf.FilePackage, writeFileBuffer *[]byte) {
+
+	// If payload > len + cap: flush io and reslice to size 0
+	payloadBytes := payload.GetPayload()
+	if len(payloadBytes) > len(*writeFileBuffer)+cap(*writeFileBuffer) {
+		//writer := bufio.NewWriter(filePath)
+		writer.Write(*writeFileBuffer)
+		writer.Flush()
+
+		*writeFileBuffer = (*writeFileBuffer)[:0]
+	} else {
+		*writeFileBuffer = append(*writeFileBuffer, payloadBytes...)
 	}
-	f, err := os.OpenFile(filePath.Name(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	defer f.Close()
-	if err != nil {
-		log.Err(err).Msg("Error opening file for writing payload contents")
-	}
-	//fmt.Printf("%v", payload)
-	writer := bufio.NewWriter(f)
-	writer.Write(payload)
-	writer.Flush()
+
 }
 
 // TODO: Duplicate hash command from agent.go:/hashFile
