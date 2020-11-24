@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	"vikingPingvin/locker/locker/messaging"
 	"vikingPingvin/locker/locker/messaging/protobuf"
 
 	"github.com/rs/zerolog/log"
@@ -147,14 +148,15 @@ func handleConnection(connection net.Conn) {
 	}
 
 	// Calculate Hash of tmp file
-	if compareArtifactHash(metaData.fileHash, artifactPath) {
+	receptionSuccesful := compareArtifactHash(metaData.fileHash, artifactPath)
+	if receptionSuccesful {
 		//Rename file
 		baseDir := filepath.Dir(artifactPath.Name())
 		newPath := filepath.Join(baseDir, metaData.fileName)
 		os.Rename(artifactPath.Name(), newPath)
 		log.Info().Msgf("Artifact ready: %s", newPath)
-
 	}
+	sendAckMessage(connection, receptionSuccesful)
 }
 
 func handleProtoMeta(metaMessage *protobuf.FileMeta) (file *os.File, metaData metaInfo) {
@@ -214,6 +216,12 @@ func compareArtifactHash(hashFromMeta []byte, tempPath *os.File) bool {
 		log.Info().Msg("Recieved Payload Hash is Invalid!")
 		return false
 	}
+}
+
+func sendAckMessage(connection net.Conn, isSuccesful bool) {
+	protoMessage, _ := messaging.CreateMessage_ServerACk(123, protobuf.MessageType_ACK, isSuccesful)
+	log.Info().Msgf("Sending ACK message with flag: %v", isSuccesful)
+	messaging.SendProtoBufMessage(connection, protoMessage)
 }
 
 // ExecuteServer : Entrypoint for Locker server start

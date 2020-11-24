@@ -3,6 +3,7 @@ package locker
 import (
 	"bufio"
 	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"vikingPingvin/locker/locker/messaging/protobuf"
 
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/proto"
 )
 
 // FileInput String Flag for Cobra CMD input
@@ -153,6 +155,25 @@ func hashFile(path string) (hash []byte) {
 
 func listenForACK(connection net.Conn) {
 
+	// TODO: Make into const in message_handler (also server.go)
+	// sizePrefix is 4 bytes protobug message size
+	sizePrefix := make([]byte, 4)
+
+	_, _ = io.ReadFull(connection, sizePrefix)
+	protoLength := int(binary.BigEndian.Uint32(sizePrefix))
+
+	ackPacketRaw := make([]byte, protoLength)
+	_, _ = io.ReadFull(connection, ackPacketRaw)
+	genericProto := &protobuf.LockerMessage{}
+	if err := proto.Unmarshal(ackPacketRaw, genericProto); err != nil {
+		log.Err(err).Msg("Error during unmarshalling")
+	}
+
+	if genericProto.GetAck().ProtoReflect().IsValid() {
+		ackPacket := genericProto.GetAck()
+
+		log.Info().Msgf("ACK packet recieved from server with success flag: %v", ackPacket.GetServerSuccess())
+	}
 }
 
 // Parse raw CLI input parameters to internal data structures
