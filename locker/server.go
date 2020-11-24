@@ -172,8 +172,17 @@ func handleProtoMeta(metaMessage *protobuf.FileMeta) (file *os.File, metaData me
 	return createTempFile(), metaData
 }
 
-func handleProtoPackage(packageMessage *protobuf.FilePackage, writer *bufio.Writer, writeFileBuffer *[]byte) {
-	writePayloadToFile(writer, packageMessage, writeFileBuffer)
+func handleProtoPackage(payload *protobuf.FilePackage, writer *bufio.Writer, writeFileBuffer *[]byte) {
+	// If payload > len + cap: flush io and reslice to size 0
+	payloadBytes := payload.GetPayload()
+	if len(payloadBytes) > len(*writeFileBuffer)+cap(*writeFileBuffer) {
+		writer.Write(*writeFileBuffer)
+		writer.Flush()
+
+		*writeFileBuffer = (*writeFileBuffer)[:0]
+	} else {
+		*writeFileBuffer = append(*writeFileBuffer, payloadBytes...)
+	}
 }
 
 func createTempFile() *os.File {
@@ -195,37 +204,6 @@ func createTempFile() *os.File {
 	return tmpArtifact
 }
 
-func writePayloadToFile(writer *bufio.Writer, payload *protobuf.FilePackage, writeFileBuffer *[]byte) {
-
-	// If payload > len + cap: flush io and reslice to size 0
-	payloadBytes := payload.GetPayload()
-	if len(payloadBytes) > len(*writeFileBuffer)+cap(*writeFileBuffer) {
-		writer.Write(*writeFileBuffer)
-		writer.Flush()
-
-		*writeFileBuffer = (*writeFileBuffer)[:0]
-	} else {
-		*writeFileBuffer = append(*writeFileBuffer, payloadBytes...)
-	}
-
-}
-
-// TODO: Duplicate hash command from agent.go:/hashFile
-// Given a valid file path, returns a SHA256 hash
-//func hashFile(path string) (hash []byte) {
-//	f, err := os.Open(path)
-//	defer f.Close()
-//	if err != nil {
-//		log.Err(err).Msgf("Cannot open file %s", path)
-//	}
-//
-//	hasher := sha256.New()
-//	if _, err := io.Copy(hasher, f); err != nil {
-//		log.Err(err).Msg("Error calculating SHA256 Hash")
-//	}
-//	return hasher.Sum(nil)
-//}
-
 func compareArtifactHash(hashFromMeta []byte, tempPath *os.File) bool {
 	calculatedHash := hashFile(tempPath.Name())
 
@@ -242,5 +220,4 @@ func compareArtifactHash(hashFromMeta []byte, tempPath *os.File) bool {
 func ExecuteServer() {
 	server := &ArtifactServer{Address: "localhost", Port: "27001"}
 	server.Start()
-
 }
