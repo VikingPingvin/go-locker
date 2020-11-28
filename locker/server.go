@@ -15,6 +15,7 @@ import (
 	"vikingPingvin/locker/locker/messaging"
 	"vikingPingvin/locker/locker/messaging/protobuf"
 
+	"github.com/rs/xid"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 )
@@ -28,6 +29,7 @@ type connectionType struct {
 type metaInfo struct {
 	fileHash []byte
 	fileName string
+	ID       []byte
 }
 
 type Server interface {
@@ -156,20 +158,23 @@ func handleConnection(connection net.Conn) {
 		os.Rename(artifactPath.Name(), newPath)
 		log.Info().Msgf("Artifact ready: %s", newPath)
 	}
-	sendAckMessage(connection, receptionSuccesful)
+	sendAckMessage(connection, &metaData, receptionSuccesful)
 }
 
 func handleProtoMeta(metaMessage *protobuf.FileMeta) (file *os.File, metaData metaInfo) {
+
+	xidValue, _ := xid.FromBytes(metaMessage.GetId())
+	metaData.fileHash = metaMessage.GetHash()
+	metaData.fileName = metaMessage.GetFilename()
+	metaData.ID = metaMessage.GetId()
+
 	log.Info().
 		Str("Artifact Name", metaMessage.GetFilename()).
 		Str("NameSpace", metaMessage.GetNamespace()).
 		Str("Project", metaMessage.GetProject()).
 		Str("hash", fmt.Sprintf("%v", metaMessage.GetHash())).
+		Str("id", xidValue.String()).
 		Msg("Artifact Meta info Recieved")
-
-	metaData.fileHash = metaMessage.GetHash()
-	metaData.fileName = metaMessage.GetFilename()
-
 	// Create temp file where the payload will be appended
 	return createTempFile(), metaData
 }
@@ -218,8 +223,8 @@ func compareArtifactHash(hashFromMeta []byte, tempPath *os.File) bool {
 	}
 }
 
-func sendAckMessage(connection net.Conn, isSuccesful bool) {
-	protoMessage, _ := messaging.CreateMessage_ServerACk(123, protobuf.MessageType_ACK, isSuccesful)
+func sendAckMessage(connection net.Conn, metaData *metaInfo, isSuccesful bool) {
+	protoMessage, _ := messaging.CreateMessage_ServerACk(metaData.ID, protobuf.MessageType_ACK, isSuccesful)
 	log.Info().Msgf("Sending ACK message with flag: %v", isSuccesful)
 	messaging.SendProtoBufMessage(connection, protoMessage)
 }

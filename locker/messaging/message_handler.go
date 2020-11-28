@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func CreateMessage_ServerACk(id int32, messageType pb.MessageType, isSuccess bool) (protoMessage *pb.LockerMessage, err error) {
+func CreateMessage_ServerACk(id []byte, messageType pb.MessageType, isSuccess bool) (protoMessage *pb.LockerMessage, err error) {
 
 	protoMessage = &pb.LockerMessage{
 		Message: &pb.LockerMessage_Ack{
@@ -30,7 +30,7 @@ func CreateMessage_ServerACk(id int32, messageType pb.MessageType, isSuccess boo
 //  msgType
 //  fileName
 //  fileHash
-func CreateMessage_FileMeta(id int32, msgType pb.MessageType, namesSpace string, projectName string, fileName string, fileHash []byte) (protoMessage *pb.LockerMessage, err error) {
+func CreateMessage_FileMeta(id []byte, msgType pb.MessageType, namesSpace string, projectName string, fileName string, fileHash []byte) (protoMessage *pb.LockerMessage, err error) {
 
 	protoMessage = &pb.LockerMessage{
 		Message: &pb.LockerMessage_Meta{
@@ -48,7 +48,7 @@ func CreateMessage_FileMeta(id int32, msgType pb.MessageType, namesSpace string,
 	return protoMessage, err
 }
 
-func CreateMessage_FilePackage(id int32, msgType pb.MessageType, payload []byte, isFinalPayload bool) (protoMessage *pb.LockerMessage, err error) {
+func CreateMessage_FilePackage(id []byte, msgType pb.MessageType, payload []byte, isFinalPayload bool) (protoMessage *pb.LockerMessage, err error) {
 
 	protoMessage = &pb.LockerMessage{
 		Message: &pb.LockerMessage_Package{

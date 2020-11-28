@@ -14,6 +14,7 @@ import (
 	"vikingPingvin/locker/locker/messaging"
 	"vikingPingvin/locker/locker/messaging/protobuf"
 
+	"github.com/rs/xid"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 )
@@ -26,6 +27,7 @@ type InputData struct {
 	FileInput string
 	FileName  string
 	FileHash  []byte
+	ID        xid.ID
 }
 
 type Agent interface {
@@ -52,7 +54,7 @@ func (a ArtifactAgent) Start(inputData *InputData) bool {
 	parseAndSendPayload(connection, inputData)
 
 	// Listen for ACK from server
-	listenForACK(connection)
+	listenForACK(connection, inputData)
 
 	return true
 }
@@ -71,10 +73,11 @@ func parseAndSendMetaData(connection net.Conn, inputData *InputData) (fileInfo o
 		Str("file name", fileInfo.Name()).
 		Str("size", fmt.Sprintf("%d", fileInfo.Size())).
 		Str("hash", fmt.Sprintf("%v", inputData.FileHash)).
+		Str("id", inputData.ID.String()).
 		Msg("Artifact metadata parsing finished")
 
 	message, err := messaging.CreateMessage_FileMeta(
-		2234,
+		inputData.ID.Bytes(),
 		protobuf.MessageType_META,
 		"test_namespace",
 		"test_project",
@@ -111,7 +114,7 @@ func parseAndSendPayload(connection net.Conn, inputData *InputData) {
 			isPayloadFinal = true
 			// Send terminating payload protobuf message
 			terminalMessage, err := messaging.CreateMessage_FilePackage(
-				2234,
+				inputData.ID.Bytes(),
 				protobuf.MessageType_PACKAGE,
 				make([]byte, 1),
 				isPayloadFinal,
@@ -124,7 +127,7 @@ func parseAndSendPayload(connection net.Conn, inputData *InputData) {
 		}
 
 		message, err := messaging.CreateMessage_FilePackage(
-			2234,
+			inputData.ID.Bytes(),
 			protobuf.MessageType_PACKAGE,
 			(buffer)[:n],
 			isPayloadFinal)
@@ -153,7 +156,7 @@ func hashFile(path string) (hash []byte) {
 	return hasher.Sum(nil)
 }
 
-func listenForACK(connection net.Conn) {
+func listenForACK(connection net.Conn, inputData *InputData) {
 
 	// TODO: Make into const in message_handler (also server.go)
 	// sizePrefix is 4 bytes protobug message size
@@ -172,7 +175,18 @@ func listenForACK(connection net.Conn) {
 	if genericProto.GetAck().ProtoReflect().IsValid() {
 		ackPacket := genericProto.GetAck()
 
-		log.Info().Msgf("ACK packet recieved from server with success flag: %v", ackPacket.GetServerSuccess())
+		serverResult := ackPacket.GetServerSuccess()
+		ackID, _ := xid.FromBytes(ackPacket.GetId())
+		if ackID != inputData.ID {
+			log.Warn().
+				Str("respone_id", ackID.String()).
+				Str("original_id", inputData.ID.String()).
+				Msg("Response ID mismatch.")
+		}
+
+		log.Info().
+			Str("id_back", ackID.String()).
+			Msgf("ACK packet recieved from server with success flag: %v", serverResult)
 	}
 }
 
@@ -202,6 +216,7 @@ func parseInputArguments() *InputData {
 	}
 	data := &InputData{
 		FileInput: inputPath,
+		ID:        xid.New(),
 	}
 	return data
 }
