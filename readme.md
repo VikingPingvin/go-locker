@@ -9,6 +9,7 @@ Application built with the help of Cobra.
 ## Status
 [![vikingpingvin](https://img.shields.io/circleci/build/gh/VikingPingvin/go-locker/master)](https://app.circleci.com/pipelines/github/VikingPingvin/go-locker?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/VikingPingvin/go-locker)](https://goreportcard.com/report/github.com/VikingPingvin/go-locker)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/VikingPingvin/go-locker)](https://img.shields.io/github/go-mod/go-version/VikingPingvin/go-locker)
 
 
 ## Usage example
