@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"vikingPingvin/locker/locker/messaging"
 	"vikingPingvin/locker/locker/messaging/protobuf"
@@ -19,13 +20,17 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// FileInput String Flag for Cobra CMD input
-var InputArg string
+// InputArgPath Relative or absolute path of files for Cobra CLI
+var InputArgPath string
+var InputArgNamespace string
 
 // InputData Populated at the start of the program
 type InputData struct {
-	FileInput string
+	FilePath  string
 	FileName  string
+	NameSpace string
+	Project   string
+	JobID     string
 	FileHash  []byte
 	ID        xid.ID
 }
@@ -61,12 +66,12 @@ func (a ArtifactAgent) Start(inputData *InputData) bool {
 
 // If --file cli input is not null, parse file
 func parseAndSendMetaData(connection net.Conn, inputData *InputData) (fileInfo os.FileInfo, err error) {
-	fileInfo, err = os.Stat(inputData.FileInput)
+	fileInfo, err = os.Stat(inputData.FilePath)
 	if os.IsNotExist(err) {
 		log.Error().Msgf("Parsing file Input error: %v", err)
 		return fileInfo, err
 	}
-	inputData.FileHash = hashFile(inputData.FileInput)
+	inputData.FileHash = hashFile(inputData.FilePath)
 	inputData.FileName = fileInfo.Name()
 
 	log.Info().
@@ -79,8 +84,9 @@ func parseAndSendMetaData(connection net.Conn, inputData *InputData) (fileInfo o
 	message, err := messaging.CreateMessage_FileMeta(
 		inputData.ID.Bytes(),
 		protobuf.MessageType_META,
-		"test_namespace",
-		"test_project",
+		inputData.NameSpace,
+		inputData.Project,
+		inputData.JobID,
 		inputData.FileName,
 		inputData.FileHash)
 	if err != nil {
@@ -97,10 +103,10 @@ func parseAndSendMetaData(connection net.Conn, inputData *InputData) (fileInfo o
 //func parseAndSendPayload(bytes *[]byte, numBytes int) {
 func parseAndSendPayload(connection net.Conn, inputData *InputData) {
 
-	f, err := os.Open(inputData.FileInput)
+	f, err := os.Open(inputData.FilePath)
 	defer f.Close()
 	if err != nil {
-		log.Error().Msgf("Cannot open file %s", inputData.FileInput)
+		log.Error().Msgf("Cannot open file %s", inputData.FilePath)
 	}
 
 	log.Info().Msg("Started sending Payload Packets...")
@@ -195,27 +201,43 @@ func parseInputArguments() *InputData {
 	var err error
 	var inputPath string
 
-	if len(InputArg) == 0 {
+	if len(InputArgPath) == 0 {
 		err = errors.New("--file empty")
 		log.Err(err).Str("agent", "parseInputArguments").Msgf("No input file was given.")
+	}
+	if len(InputArgNamespace) == 0 {
+		err = errors.New("--namespace empty")
+		log.Err(err).Str("agent", "parseInputArguments").Msgf("No input namespace was given.")
 	}
 	if err != nil {
 		os.Exit(1)
 	}
 
-	inputPath = InputArg
-	if !filepath.IsAbs(InputArg) {
+	inputPath = InputArgPath
+	if !filepath.IsAbs(InputArgPath) {
 		cwd, err := os.Getwd()
 		if err != nil {
 			log.Err(err).Msg("Error during CWD PATH parsing")
 			os.Exit(1)
 		}
-		log.Debug().Msgf("Relative path of input: %s", InputArg)
-		inputPath = filepath.Join(cwd, InputArg)
+		log.Debug().Msgf("Relative path of input: %s", InputArgPath)
+		inputPath = filepath.Join(cwd, InputArgPath)
 
 	}
+
+	fullNameSpace := InputArgNamespace
+	namePaths := strings.Split(fullNameSpace, "/")
+	if len(namePaths) != 3 {
+		err = errors.New("Namespace must contain 3 values separated by '/'")
+		log.Err(err).Msg("Namespace values not valid")
+		os.Exit(1)
+	}
+
 	data := &InputData{
-		FileInput: inputPath,
+		FilePath:  inputPath,
+		NameSpace: namePaths[0],
+		Project:   namePaths[1],
+		JobID:     namePaths[2],
 		ID:        xid.New(),
 	}
 	return data

@@ -76,7 +76,6 @@ func handleConnection(connection net.Conn) {
 
 	metaData := metaInfo{}
 
-	//var hashInfoFromMeta []byte
 	timeoutDuration := 5 * time.Second
 	invalidCounterMax := 10
 	invalidCounter := 0
@@ -172,6 +171,7 @@ func handleProtoMeta(metaMessage *protobuf.FileMeta) (file *os.File, metaData me
 		Str("Artifact Name", metaMessage.GetFilename()).
 		Str("NameSpace", metaMessage.GetNamespace()).
 		Str("Project", metaMessage.GetProject()).
+		Str("Job-ID", metaMessage.GetJobID()).
 		Str("hash", fmt.Sprintf("%v", metaMessage.GetHash())).
 		Str("id", xidValue.String()).
 		Msg("Artifact Meta info Recieved")

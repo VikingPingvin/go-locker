@@ -30,7 +30,7 @@ func CreateMessage_ServerACk(id []byte, messageType pb.MessageType, isSuccess bo
 //  msgType
 //  fileName
 //  fileHash
-func CreateMessage_FileMeta(id []byte, msgType pb.MessageType, namesSpace string, projectName string, fileName string, fileHash []byte) (protoMessage *pb.LockerMessage, err error) {
+func CreateMessage_FileMeta(id []byte, msgType pb.MessageType, namesSpace string, projectName string, jobID string, fileName string, fileHash []byte) (protoMessage *pb.LockerMessage, err error) {
 
 	protoMessage = &pb.LockerMessage{
 		Message: &pb.LockerMessage_Meta{
@@ -39,6 +39,7 @@ func CreateMessage_FileMeta(id []byte, msgType pb.MessageType, namesSpace string
 				MsgType:   msgType,
 				Namespace: namesSpace,
 				Project:   projectName,
+				JobID:     jobID,
 				Filename:  fileName,
 				Hash:      fileHash,
 			},

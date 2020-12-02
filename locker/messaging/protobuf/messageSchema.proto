@@ -13,8 +13,9 @@ message FileMeta{
     MessageType msgType = 2; 
     string namespace = 3;
     string project = 4;  
-    string filename = 5;
-    bytes hash = 6;
+    string jobID = 5;
+    string filename = 6;
+    bytes hash = 7;
 }
 
 message FilePackage{
