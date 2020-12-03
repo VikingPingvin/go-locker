@@ -76,6 +76,7 @@ func parseAndSendMetaData(connection net.Conn, inputData *InputData) (fileInfo o
 
 	log.Info().
 		Str("file name", fileInfo.Name()).
+		Str("Namespace", fmt.Sprintf("%s/%s/%s", inputData.NameSpace, inputData.Project, inputData.JobID)).
 		Str("size", fmt.Sprintf("%d", fileInfo.Size())).
 		Str("hash", fmt.Sprintf("%v", inputData.FileHash)).
 		Str("id", inputData.ID.String()).

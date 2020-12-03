@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	"vikingPingvin/locker/locker/fileutils"
 	"vikingPingvin/locker/locker/messaging"
 	"vikingPingvin/locker/locker/messaging/protobuf"
 
@@ -27,9 +28,12 @@ type connectionType struct {
 
 // Struct containing file data from received MetaData message
 type metaInfo struct {
-	fileHash []byte
-	fileName string
-	ID       []byte
+	fileHash  []byte
+	fileName  string
+	namespace string
+	project   string
+	jobID     string
+	ID        []byte
 }
 
 type Server interface {
@@ -74,7 +78,7 @@ func handleConnection(connection net.Conn) {
 	artifactReceived := false
 	var artifactPath *os.File
 
-	metaData := metaInfo{}
+	metaData := &metaInfo{}
 
 	timeoutDuration := 5 * time.Second
 	invalidCounterMax := 10
@@ -153,18 +157,33 @@ func handleConnection(connection net.Conn) {
 	if receptionSuccesful {
 		//Rename file
 		baseDir := filepath.Dir(artifactPath.Name())
-		newPath := filepath.Join(baseDir, metaData.fileName)
-		os.Rename(artifactPath.Name(), newPath)
+		newPath := filepath.Join(baseDir,
+			metaData.namespace,
+			metaData.project,
+			metaData.jobID,
+			metaData.fileName)
+		err := fileutils.EnsurePathExists(filepath.Dir(newPath))
+		if err == nil {
+			err = fileutils.MoveFile(artifactPath.Name(), newPath)
+			if err != nil {
+				log.Err(err).Msg("SAD")
+			}
+		}
 		log.Info().Msgf("Artifact ready: %s", newPath)
 	}
-	sendAckMessage(connection, &metaData, receptionSuccesful)
+	sendAckMessage(connection, metaData, receptionSuccesful)
 }
 
-func handleProtoMeta(metaMessage *protobuf.FileMeta) (file *os.File, metaData metaInfo) {
+func handleProtoMeta(metaMessage *protobuf.FileMeta) (file *os.File, _ *metaInfo) {
+
+	metaData := &metaInfo{}
 
 	xidValue, _ := xid.FromBytes(metaMessage.GetId())
 	metaData.fileHash = metaMessage.GetHash()
 	metaData.fileName = metaMessage.GetFilename()
+	metaData.namespace = metaMessage.GetNamespace()
+	metaData.project = metaMessage.GetProject()
+	metaData.jobID = metaMessage.GetJobID()
 	metaData.ID = metaMessage.GetId()
 
 	log.Info().
