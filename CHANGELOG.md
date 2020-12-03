@@ -14,6 +14,7 @@
 - Ability for Agent to request artifact from the Server
 - Configurable Agent with YML
 - Configurable Server with YML
+- Parts of code is covered by tests
 ---
 # 0.1.0 (2020.12.02)
 ## FEATURE 
