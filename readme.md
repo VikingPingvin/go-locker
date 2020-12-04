@@ -21,7 +21,7 @@ Application built with the help of Cobra.
 To start Locker in server mode use the `server` command.  
 The server app handles initial configuration and database connection and waits for incoming connections.
 ### Start agent
-> ./locker agent --file="path-to-file"
+> ./locker agent --file="path-to-file" --namespace="namespace/project/job-id
 
 To start Locker in Agent mode, use the `agent` command and supply a relative or absolute path to a file.  
 The agent parses the file given under the `--file` flag and collects metadata, such as sha256 hash.

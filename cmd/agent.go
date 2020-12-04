@@ -43,7 +43,9 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// agentCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	agentCmd.Flags().StringVar(&locker.InputArgPath, "file", "", "Specify path for input artifact file")
+	agentCmd.Flags().StringVar(&locker.InputArgPath, "file", "", "[path,...] Absolute or relative path(s). Multiple paths must be separated with ','")
 
-	agentCmd.Flags().StringVar(&locker.InputArgNamespace, "namespace", "", "Specify namespace in the following format: namespace/project/job-id")
+	agentCmd.Flags().StringVar(&locker.InputArgNamespace, "namespace", "", "[namespace/project/job-id] Separator must be '/'")
+
+	agentCmd.Flags().StringVar(&locker.InputArgConsume, "consume", "", "[namespace/project/job-id] Requests the specified artifact to download from the Locker Server.")
 }
