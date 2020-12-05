@@ -16,10 +16,24 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
+	"os"
 	"vikingPingvin/locker/locker"
 
+	homedir "github.com/mitchellh/go-homedir"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
+
+type Input struct {
+	Path      string
+	Namespace string
+	Consume   string
+}
+
+// Pointer to an Input Instance
+var input *Input
 
 // agentCmd represents the agent command
 var agentCmd = &cobra.Command{
@@ -27,12 +41,16 @@ var agentCmd = &cobra.Command{
 	Short: "Start Locker in Agent mode",
 	Long:  `locker agent`,
 	Run: func(cmd *cobra.Command, args []string) {
+		initConfig()
 		locker.ExecuteAgent()
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(agentCmd)
+
+	// Initialize input to avoid nil pointer dereference errors
+	input = &Input{}
 
 	// Here you will define your flags and configuration settings.
 
@@ -43,9 +61,46 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// agentCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	agentCmd.Flags().StringVar(&locker.InputArgPath, "file", "", "[path,...] Absolute or relative path(s). Multiple paths must be separated with ','")
+	agentCmd.Flags().StringVar(&input.Path, "file", "", "[path,...] Absolute or relative path(s). Multiple paths must be separated with ','")
+	agentCmd.Flags().StringVar(&input.Namespace, "namespace", "", "[namespace/project/job-id] Separator must be '/'")
+	agentCmd.Flags().StringVar(&input.Consume, "consume", "", "[namespace/project/job-id] Requests the specified artifact to download from the Locker Server.")
 
-	agentCmd.Flags().StringVar(&locker.InputArgNamespace, "namespace", "", "[namespace/project/job-id] Separator must be '/'")
+}
 
-	agentCmd.Flags().StringVar(&locker.InputArgConsume, "consume", "", "[namespace/project/job-id] Requests the specified artifact to download from the Locker Server.")
+// initConfig reads in config file and ENV variables if set.
+func initConfig() {
+	if cfgFile != "" {
+		// Use config file from the flag.
+		viper.SetConfigFile(cfgFile)
+	} else {
+		// Find home directory.
+		home, err := homedir.Dir()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		// Search config in home directory with name ".locker" (without extension).
+		viper.AddConfigPath(home)
+		viper.SetConfigName(".locker")
+	}
+
+	viper.AutomaticEnv() // read in environment variables that match
+
+	// If a config file is found, read it in.
+	if err := viper.ReadInConfig(); err == nil {
+		log.Debug().Msgf("Using config file: %s", viper.ConfigFileUsed())
+	}
+
+	cfgContent = viper.AllSettings()
+	agentData := cfgContent["agentconfig"]
+	fmt.Print(agentData)
+
+	log.Debug().Msgf("config:\n %v", viper.AllSettings())
+
+	locker.LockerConfig = &locker.AgentConfig{}
+	locker.LockerConfig.ServerIP = cfgContent["server_ip"].(string)
+	locker.LockerConfig.ServerPort = cfgContent["server_port"].(string)
+	locker.LockerConfig.LogPath = cfgContent["log_path"].(string)
+	locker.LockerConfig.SendConcurrent = cfgContent["send_concurrent"].(bool)
 }

@@ -1,6 +1,7 @@
 package locker
 
 import (
+	"fmt"
 	"net"
 	"sync"
 
@@ -9,13 +10,13 @@ import (
 )
 
 // InputArgPath Relative or absolute path of files for Cobra CLI
-var (
-	InputArgPath      string
-	InputArgNamespace string
-	InputArgConsume   string
-)
+//var (
+//	InputArgPath      string
+//	InputArgNamespace string
+//	InputArgConsume   string
+//)
 
-// InputData Populated at the start of the program
+// InputData Represents a single artifact
 type InputData struct {
 	FilePath  string
 	FileName  string
@@ -26,26 +27,40 @@ type InputData struct {
 	ID        xid.ID
 }
 
+// AgentConfig holds configuration values
+type AgentConfig struct {
+	ServerIP       string
+	ServerPort     string
+	SendConcurrent bool
+	LogPath        string
+	ArgPath        string
+	ArgNamespace   string
+	ArgConsume     string
+}
+
+// LockerConfig a
+var LockerConfig *AgentConfig
+
 type Agent interface {
 	Start() bool
 	Stop() bool
 }
 
 type ArtifactAgent struct {
-	Port string
+	Configuration AgentConfig
 }
 
 func (a ArtifactAgent) Start(inputDataArray []*InputData) bool {
 	// TODO: move sendConcurrent to config file
-	const sendConcurrent = true
+	var sendConcurrent = a.Configuration.SendConcurrent
 
 	var wg sync.WaitGroup
 	for _, singleInputData := range inputDataArray {
 		if sendConcurrent {
 			wg.Add(1)
-			go sendArtifactToServer(singleInputData, &wg)
+			go sendArtifactToServer(singleInputData, &a.Configuration, &wg)
 		} else {
-			sendArtifactToServer(singleInputData, &wg)
+			sendArtifactToServer(singleInputData, &a.Configuration, &wg)
 		}
 	}
 
@@ -53,8 +68,9 @@ func (a ArtifactAgent) Start(inputDataArray []*InputData) bool {
 	return true
 }
 
-func sendArtifactToServer(artifact *InputData, wg *sync.WaitGroup) {
-	connection, err := net.Dial("tcp", "localhost:27001")
+func sendArtifactToServer(artifact *InputData, agentConfig *AgentConfig, wg *sync.WaitGroup) {
+	serverAddr := fmt.Sprintf("%s:%s", agentConfig.ServerIP, agentConfig.ServerPort)
+	connection, err := net.Dial("tcp", serverAddr)
 	if err != nil {
 		panic(err)
 	}
@@ -78,7 +94,10 @@ func ExecuteAgent() {
 	// Handle input flags
 	inputData := parseInputArguments()
 
+	// Get json configuration
+	//agentCfg := getJsonConfig()
+
 	// Start Agent
-	agent := &ArtifactAgent{Port: "27001"}
+	agent := &ArtifactAgent{Configuration: *LockerConfig}
 	agent.Start(inputData)
 }

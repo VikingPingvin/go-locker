@@ -158,11 +158,14 @@ func parseInputArguments() []*InputData {
 	var inputPath string
 	const inputPathSeparator = ","
 
-	if len(InputArgPath) == 0 {
+	// Initialize LockerConfig to avoid nil dereference errors
+	//LockerConfig = &AgentConfig{}
+
+	if len(LockerConfig.ArgPath) == 0 {
 		err = errors.New("--file empty")
 		log.Err(err).Str("agent", "parseInputArguments").Msgf("No input file was given.")
 	}
-	if len(InputArgNamespace) == 0 {
+	if len(LockerConfig.ArgNamespace) == 0 {
 		err = errors.New("--namespace empty")
 		log.Err(err).Str("agent", "parseInputArguments").Msgf("No input namespace was given.")
 	}
@@ -172,7 +175,7 @@ func parseInputArguments() []*InputData {
 
 	//
 	// Store information about Namespace, Project and Job-ID
-	fullNameSpace := InputArgNamespace
+	fullNameSpace := LockerConfig.ArgNamespace
 	namePaths := strings.Split(fullNameSpace, "/")
 	if len(namePaths) != 3 {
 		err = errors.New("Namespace must contain 3 values separated by '/'")
@@ -182,7 +185,7 @@ func parseInputArguments() []*InputData {
 
 	//
 	// dataArray contains an *InputData, len(inputPathSlice) times
-	inputPathSlice := strings.Split(InputArgPath, inputPathSeparator)
+	inputPathSlice := strings.Split(LockerConfig.ArgPath, inputPathSeparator)
 	dataArray := make([]*InputData, len(inputPathSlice))
 
 	for i, path := range inputPathSlice {
@@ -208,3 +211,14 @@ func parseInputArguments() []*InputData {
 
 	return dataArray
 }
+
+//func getJsonConfig() (agentCfg *AgentConfig) {
+//	cfg := cmd.GetConfiguration()
+//
+//	agentCfg.serverIP = cfg["server_ip"].(string)
+//	agentCfg.serverPort = cfg["server_port"].(string)
+//	agentCfg.logPath = cfg["log_path"].(string)
+//	agentCfg.sendConcurrent = cfg["send_concurrent"].(bool)
+//
+//	return
+//}
