@@ -36,6 +36,15 @@ type metaInfo struct {
 	ID        []byte
 }
 
+type ServerConfig struct {
+	ServerIP        string
+	ServerPort      string
+	LogPath         string
+	ArtifactRootDir string
+}
+
+var LockerServerConfig *ServerConfig
+
 type Server interface {
 	Start() bool
 	Stop() bool

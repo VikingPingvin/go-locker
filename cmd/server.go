@@ -18,7 +18,9 @@ package cmd
 import (
 	"vikingPingvin/locker/locker"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // serverCmd represents the server command
@@ -34,13 +36,23 @@ var serverCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(serverCmd)
 
-	// Here you will define your flags and configuration settings.
+	initConfigServer()
+}
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// serverCmd.PersistentFlags().String("foo", "", "A help for foo")
+func initConfigServer() {
+	if cfgFile != "" {
+		// Use config file from the flag.
+		viper.SetConfigFile(cfgFile)
+	}
+	// If a config file is found, read it in.
+	if err := viper.ReadInConfig(); err == nil {
+		log.Debug().Msgf("Using config file: %s", viper.ConfigFileUsed())
+	}
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// serverCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	locker.LockerServerConfig = &locker.ServerConfig{}
+	locker.LockerServerConfig.ServerIP = viper.GetString("serverconfig.server_ip")
+	locker.LockerServerConfig.ServerPort = viper.GetString("serverconfig.server_port")
+	locker.LockerServerConfig.ArtifactRootDir = viper.GetString("serverconfig.artifacts_root_dir")
+	locker.LockerServerConfig.LogPath = viper.GetString("serverconfig.log_path")
+
 }

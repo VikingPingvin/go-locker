@@ -16,6 +16,7 @@
 ## Feature
 - SQLITE database with ORM setup
 - Ability for Agent to request artifact from the Server
+
 # 0.2 (Unreleased)
 ## Feature
 - Ability for Agent to send multiple files with a single configuration

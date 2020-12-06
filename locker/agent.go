@@ -38,8 +38,8 @@ type AgentConfig struct {
 	ArgConsume     string
 }
 
-// LockerConfig a
-var LockerConfig *AgentConfig
+// LockerAgentConfig a
+var LockerAgentConfig *AgentConfig
 
 type Agent interface {
 	Start() bool
@@ -71,9 +71,16 @@ func sendArtifactToServer(artifact *InputData, agentConfig *AgentConfig, wg *syn
 	serverAddr := fmt.Sprintf("%s:%s", agentConfig.ServerIP, agentConfig.ServerPort)
 	connection, err := net.Dial("tcp", serverAddr)
 	if err != nil {
-		panic(err)
+		// TODO: if wg done is called first, panic is not executed.
+		// Panic first and WG is not decremented -> goroutine error
+		log.Panic().Err(err).Msg("Can't establish connection to the server!!!")
+		wg.Done()
 	}
-	defer connection.Close()
+	defer func() {
+		connection.Close()
+		wg.Done()
+	}()
+
 	log.Info().Msg("Agent connected to Locker Server...")
 
 	// Send Metadata message
@@ -84,8 +91,6 @@ func sendArtifactToServer(artifact *InputData, agentConfig *AgentConfig, wg *syn
 
 	// Listen for ACK from server
 	listenForACK(connection, artifact)
-
-	wg.Done()
 }
 
 // ExecuteAgent : Entrypoint for Locker agent start
@@ -94,6 +99,6 @@ func ExecuteAgent() {
 	inputData := parseInputArguments()
 
 	// Start Agent
-	agent := &ArtifactAgent{Configuration: *LockerConfig}
+	agent := &ArtifactAgent{Configuration: *LockerAgentConfig}
 	agent.Start(inputData)
 }

@@ -1,0 +1,8 @@
+{
+    "serverConfig":{
+    "ip_address": "127.0.0.1",
+    "port": "27001",
+    "artifacts_root_dir": "./out",
+    "log_path": "./locker_server_log.txt"
+    }
+}

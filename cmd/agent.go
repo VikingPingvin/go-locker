@@ -96,13 +96,29 @@ func initConfig() {
 
 	log.Debug().Msgf("config:\n %v", viper.AllSettings())
 
-	locker.LockerConfig = &locker.AgentConfig{}
-	locker.LockerConfig.ServerIP = viper.GetString("agentconfig.server_ip")
-	locker.LockerConfig.ServerPort = viper.GetString("agentconfig.server_port")
-	locker.LockerConfig.LogPath = viper.GetString("agentconfig.log_path")
-	locker.LockerConfig.SendConcurrent = viper.GetBool("agentconfig.send_concurrent")
+	locker.LockerAgentConfig = &locker.AgentConfig{}
+	locker.LockerAgentConfig.ServerIP = viper.GetString("agentconfig.server_ip")
+	locker.LockerAgentConfig.ServerPort = viper.GetString("agentconfig.server_port")
+	locker.LockerAgentConfig.LogPath = viper.GetString("agentconfig.log_path")
+	locker.LockerAgentConfig.SendConcurrent = viper.GetBool("agentconfig.send_concurrent")
 
-	locker.LockerConfig.ArgPath = input.Path
-	locker.LockerConfig.ArgNamespace = input.Namespace
-	locker.LockerConfig.ArgConsume = input.Consume
+	locker.LockerAgentConfig.ArgPath = input.Path
+	locker.LockerAgentConfig.ArgNamespace = input.Namespace
+	locker.LockerAgentConfig.ArgConsume = input.Consume
+
+	type agentCfg struct {
+		server_ip       string `mapstructure:"server_ip"`
+		server_port     string `mapstructure:"server_port"`
+		send_concurrent bool   `mapstructure:"send_concurrent"`
+		log_path        string `mapstructure:"log_path"`
+	}
+	type agCfgStruct map[string]agentCfg
+	//type config map[string]agCfgStruct
+
+	testCfg := &agCfgStruct{}
+
+	err := viper.UnmarshalExact(&testCfg)
+	//testkey := viper.unmar
+	fmt.Println(err)
+	fmt.Println("asd")
 }
