@@ -93,14 +93,16 @@ func initConfig() {
 	}
 
 	cfgContent = viper.AllSettings()
-	agentData := cfgContent["agentconfig"]
-	fmt.Print(agentData)
 
 	log.Debug().Msgf("config:\n %v", viper.AllSettings())
 
 	locker.LockerConfig = &locker.AgentConfig{}
-	locker.LockerConfig.ServerIP = cfgContent["server_ip"].(string)
-	locker.LockerConfig.ServerPort = cfgContent["server_port"].(string)
-	locker.LockerConfig.LogPath = cfgContent["log_path"].(string)
-	locker.LockerConfig.SendConcurrent = cfgContent["send_concurrent"].(bool)
+	locker.LockerConfig.ServerIP = viper.GetString("agentconfig.server_ip")
+	locker.LockerConfig.ServerPort = viper.GetString("agentconfig.server_port")
+	locker.LockerConfig.LogPath = viper.GetString("agentconfig.log_path")
+	locker.LockerConfig.SendConcurrent = viper.GetBool("agentconfig.send_concurrent")
+
+	locker.LockerConfig.ArgPath = input.Path
+	locker.LockerConfig.ArgNamespace = input.Namespace
+	locker.LockerConfig.ArgConsume = input.Consume
 }
