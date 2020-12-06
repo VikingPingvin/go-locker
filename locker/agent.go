@@ -51,7 +51,6 @@ type ArtifactAgent struct {
 }
 
 func (a ArtifactAgent) Start(inputDataArray []*InputData) bool {
-	// TODO: move sendConcurrent to config file
 	var sendConcurrent = a.Configuration.SendConcurrent
 
 	var wg sync.WaitGroup
@@ -93,9 +92,6 @@ func sendArtifactToServer(artifact *InputData, agentConfig *AgentConfig, wg *syn
 func ExecuteAgent() {
 	// Handle input flags
 	inputData := parseInputArguments()
-
-	// Get json configuration
-	//agentCfg := getJsonConfig()
 
 	// Start Agent
 	agent := &ArtifactAgent{Configuration: *LockerConfig}

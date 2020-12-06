@@ -211,14 +211,3 @@ func parseInputArguments() []*InputData {
 
 	return dataArray
 }
-
-//func getJsonConfig() (agentCfg *AgentConfig) {
-//	cfg := cmd.GetConfiguration()
-//
-//	agentCfg.serverIP = cfg["server_ip"].(string)
-//	agentCfg.serverPort = cfg["server_port"].(string)
-//	agentCfg.logPath = cfg["log_path"].(string)
-//	agentCfg.sendConcurrent = cfg["send_concurrent"].(bool)
-//
-//	return
-//}
