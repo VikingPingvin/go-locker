@@ -48,12 +48,13 @@ type Server interface {
 }
 
 type ArtifactServer struct {
-	Address string
-	Port    string
+	Configuration ServerConfig
 }
 
 func (s ArtifactServer) Start() bool {
-	listenAddr := fmt.Sprintf("%s:%s", s.Address, s.Port)
+	listenAddr := fmt.Sprintf("%s:%s",
+		s.Configuration.Server.ServerIP,
+		s.Configuration.Server.ServerPort)
 	server, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		log.Info().Msg("Error listening on port!")
@@ -61,7 +62,7 @@ func (s ArtifactServer) Start() bool {
 	}
 
 	defer server.Close()
-	log.Info().Str("configuration", fmt.Sprintf("%+v", LockerServerConfig.Server)).
+	log.Info().Str("configuration", fmt.Sprintf("%+v", s.Configuration.Server)).
 		Msgf("Server started! \n Listening for connections...")
 
 	for {
@@ -258,6 +259,6 @@ func sendAckMessage(connection net.Conn, metaData *metaInfo, isSuccesful bool) {
 
 // ExecuteServer : Entrypoint for Locker server start
 func ExecuteServer() {
-	server := &ArtifactServer{Address: "localhost", Port: "27001"}
+	server := &ArtifactServer{Configuration: *LockerServerConfig}
 	server.Start()
 }
