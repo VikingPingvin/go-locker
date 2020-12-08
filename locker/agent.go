@@ -30,10 +30,10 @@ type ArtifactData struct {
 // AgentConfig holds configuration values
 type AgentConfig struct {
 	Agent struct {
-		ServerIP       string `yaml:"server_ip"`
-		ServerPort     string `yaml:"server_port"`
-		SendConcurrent bool   `yaml:"send_concurrent"`
-		LogPath        string `yaml:"log_path"`
+		ServerIP       string `yaml:"server_ip" env:"LOCKER_SERVER_IP" env-default:"127.0.0.1"`
+		ServerPort     string `yaml:"server_port" env:"LOCKER_SERVER_PORT" env-default:"27001"`
+		SendConcurrent bool   `yaml:"send_concurrent" env:"LOCKER_AGENT_CONCURRENT" env-default:"true"`
+		LogPath        string `yaml:"log_path" env:"LOCKER_AGENT_LOG" env-default:"./locker-agent.log"`
 		ArgPath        string
 		ArgNamespace   string
 		ArgConsume     string
