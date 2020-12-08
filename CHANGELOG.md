@@ -17,14 +17,13 @@
 - SQLITE database with ORM setup
 - Ability for Agent to request artifact from the Server
 
-# 0.2 (Unreleased)
+# 0.2 (2020.12.08)
 ## Feature
 - Ability for Agent to send multiple files with a single configuration
-- Configurable Agent with YML
-- Configurable Server with YML
+- Agent and Server can be configured with .yml files and ENV variables (Not complete functionality)
 
-## FIXED
-- Added error handling to Agent when connection to the Server cannot be established
+## BUGS
+- If the Agent cannot connect to the Server (bad configuration) Locker still crashes, without properly handling the error.
 ---
 # 0.1 (2020.12.03)
 ## FEATURE 
