@@ -16,8 +16,8 @@ import (
 //	InputArgConsume   string
 //)
 
-// InputData Represents a single artifact
-type InputData struct {
+// ArtifactData Represents a single artifact
+type ArtifactData struct {
 	FilePath  string
 	FileName  string
 	NameSpace string
@@ -29,13 +29,15 @@ type InputData struct {
 
 // AgentConfig holds configuration values
 type AgentConfig struct {
-	ServerIP       string
-	ServerPort     string
-	SendConcurrent bool
-	LogPath        string
-	ArgPath        string
-	ArgNamespace   string
-	ArgConsume     string
+	Agent struct {
+		ServerIP       string `yaml:"server_ip"`
+		ServerPort     string `yaml:"server_port"`
+		SendConcurrent bool   `yaml:"send_concurrent"`
+		LogPath        string `yaml:"log_path"`
+		ArgPath        string
+		ArgNamespace   string
+		ArgConsume     string
+	} `yaml:"agentconfig"`
 }
 
 // LockerAgentConfig a
@@ -50,8 +52,8 @@ type ArtifactAgent struct {
 	Configuration AgentConfig
 }
 
-func (a ArtifactAgent) Start(inputDataArray []*InputData) bool {
-	var sendConcurrent = a.Configuration.SendConcurrent
+func (a ArtifactAgent) Start(inputDataArray []*ArtifactData) bool {
+	var sendConcurrent = a.Configuration.Agent.SendConcurrent
 
 	var wg sync.WaitGroup
 	for _, singleInputData := range inputDataArray {
@@ -67,8 +69,8 @@ func (a ArtifactAgent) Start(inputDataArray []*InputData) bool {
 	return true
 }
 
-func sendArtifactToServer(artifact *InputData, agentConfig *AgentConfig, wg *sync.WaitGroup) {
-	serverAddr := fmt.Sprintf("%s:%s", agentConfig.ServerIP, agentConfig.ServerPort)
+func sendArtifactToServer(artifact *ArtifactData, agentConfig *AgentConfig, wg *sync.WaitGroup) {
+	serverAddr := fmt.Sprintf("%s:%s", agentConfig.Agent.ServerIP, agentConfig.Agent.ServerPort)
 	connection, err := net.Dial("tcp", serverAddr)
 	if err != nil {
 		// TODO: if wg done is called first, panic is not executed.

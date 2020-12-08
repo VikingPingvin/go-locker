@@ -16,11 +16,11 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
 	"vikingPingvin/locker/locker"
 
-	"github.com/rs/zerolog/log"
+	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // serverCmd represents the server command
@@ -29,30 +29,34 @@ var serverCmd = &cobra.Command{
 	Short: "Start locker in server mode",
 	Long:  `server mode`,
 	Run: func(cmd *cobra.Command, args []string) {
+		initConfigServer()
 		locker.ExecuteServer()
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(serverCmd)
-
-	initConfigServer()
 }
 
 func initConfigServer() {
+	var serverConfigStruct locker.ServerConfig
+
 	if cfgFile != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	}
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		log.Debug().Msgf("Using config file: %s", viper.ConfigFileUsed())
+		cleanenv.ReadConfig(cfgFile, &locker.LockerServerConfig)
+	} else {
+		cleanenv.ReadEnv(&serverConfigStruct)
+		locker.LockerServerConfig = &serverConfigStruct
 	}
 
-	locker.LockerServerConfig = &locker.ServerConfig{}
-	locker.LockerServerConfig.ServerIP = viper.GetString("serverconfig.server_ip")
-	locker.LockerServerConfig.ServerPort = viper.GetString("serverconfig.server_port")
-	locker.LockerServerConfig.ArtifactRootDir = viper.GetString("serverconfig.artifacts_root_dir")
-	locker.LockerServerConfig.LogPath = viper.GetString("serverconfig.log_path")
+	//test := &locker.LockerServerConfig
+
+	fmt.Println(serverConfigStruct)
+
+	//locker.LockerServerConfig = &locker.ServerConfig{}
+	//locker.LockerServerConfig.Server.ServerIP = viper.GetString("serverconfig.server_ip")
+	//locker.LockerServerConfig.Server.ServerPort = viper.GetString("serverconfig.server_port")
+	//locker.LockerServerConfig.Server.ArtifactRootDir = viper.GetString("serverconfig.artifacts_root_dir")
+	//locker.LockerServerConfig.Server.LogPath = viper.GetString("serverconfig.log_path")
 
 }

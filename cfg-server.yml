@@ -1,0 +1,5 @@
+serverconfig:
+  server_ip: "127.0.0.1"
+  server_port: "27001"
+  artifacts_root_dir: "./out"
+  log_path: "./locker_server_log.txt"

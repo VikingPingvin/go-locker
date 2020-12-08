@@ -20,31 +20,31 @@ import (
 )
 
 // If --file cli input is not null, parse file
-func parseAndSendMetaData(connection net.Conn, inputData *InputData) (fileInfo os.FileInfo, err error) {
-	fileInfo, err = os.Stat(inputData.FilePath)
+func parseAndSendMetaData(connection net.Conn, artifactData *ArtifactData) (fileInfo os.FileInfo, err error) {
+	fileInfo, err = os.Stat(artifactData.FilePath)
 	if os.IsNotExist(err) {
 		log.Error().Msgf("Parsing file Input error: %v", err)
 		return fileInfo, err
 	}
-	inputData.FileHash = hashFile(inputData.FilePath)
-	inputData.FileName = fileInfo.Name()
+	artifactData.FileHash = hashFile(artifactData.FilePath)
+	artifactData.FileName = fileInfo.Name()
 
 	log.Info().
 		Str("file name", fileInfo.Name()).
-		Str("Namespace", fmt.Sprintf("%s/%s/%s", inputData.NameSpace, inputData.Project, inputData.JobID)).
+		Str("Namespace", fmt.Sprintf("%s/%s/%s", artifactData.NameSpace, artifactData.Project, artifactData.JobID)).
 		Str("size", fmt.Sprintf("%d", fileInfo.Size())).
-		Str("hash", fmt.Sprintf("%v", inputData.FileHash)).
-		Str("id", inputData.ID.String()).
+		Str("hash", fmt.Sprintf("%v", artifactData.FileHash)).
+		Str("id", artifactData.ID.String()).
 		Msg("Artifact metadata parsing finished")
 
 	message, err := messaging.CreateMessage_FileMeta(
-		inputData.ID.Bytes(),
+		artifactData.ID.Bytes(),
 		protobuf.MessageType_META,
-		inputData.NameSpace,
-		inputData.Project,
-		inputData.JobID,
-		inputData.FileName,
-		inputData.FileHash)
+		artifactData.NameSpace,
+		artifactData.Project,
+		artifactData.JobID,
+		artifactData.FileName,
+		artifactData.FileHash)
 	if err != nil {
 		panic(err)
 	}
@@ -57,12 +57,12 @@ func parseAndSendMetaData(connection net.Conn, inputData *InputData) (fileInfo o
 }
 
 //func parseAndSendPayload(bytes *[]byte, numBytes int) {
-func parseAndSendPayload(connection net.Conn, inputData *InputData) {
+func parseAndSendPayload(connection net.Conn, artifactData *ArtifactData) {
 
-	f, err := os.Open(inputData.FilePath)
+	f, err := os.Open(artifactData.FilePath)
 	defer f.Close()
 	if err != nil {
-		log.Error().Msgf("Cannot open file %s", inputData.FilePath)
+		log.Error().Msgf("Cannot open file %s", artifactData.FilePath)
 	}
 
 	log.Info().Msg("Started sending Payload Packets...")
@@ -76,7 +76,7 @@ func parseAndSendPayload(connection net.Conn, inputData *InputData) {
 			isPayloadFinal = true
 			// Send terminating payload protobuf message
 			terminalMessage, err := messaging.CreateMessage_FilePackage(
-				inputData.ID.Bytes(),
+				artifactData.ID.Bytes(),
 				protobuf.MessageType_PACKAGE,
 				make([]byte, 1),
 				isPayloadFinal,
@@ -89,7 +89,7 @@ func parseAndSendPayload(connection net.Conn, inputData *InputData) {
 		}
 
 		message, err := messaging.CreateMessage_FilePackage(
-			inputData.ID.Bytes(),
+			artifactData.ID.Bytes(),
 			protobuf.MessageType_PACKAGE,
 			(buffer)[:n],
 			isPayloadFinal)
@@ -118,7 +118,7 @@ func hashFile(path string) (hash []byte) {
 	return hasher.Sum(nil)
 }
 
-func listenForACK(connection net.Conn, inputData *InputData) {
+func listenForACK(connection net.Conn, artifactData *ArtifactData) {
 
 	// TODO: Make into const in message_handler (also server.go)
 	// sizePrefix is 4 bytes protobug message size
@@ -139,10 +139,10 @@ func listenForACK(connection net.Conn, inputData *InputData) {
 
 		serverResult := ackPacket.GetServerSuccess()
 		ackID, _ := xid.FromBytes(ackPacket.GetId())
-		if ackID != inputData.ID {
+		if ackID != artifactData.ID {
 			log.Warn().
 				Str("respone_id", ackID.String()).
-				Str("original_id", inputData.ID.String()).
+				Str("original_id", artifactData.ID.String()).
 				Msg("Response ID mismatch.")
 		}
 
@@ -153,7 +153,7 @@ func listenForACK(connection net.Conn, inputData *InputData) {
 }
 
 // Parse raw CLI input parameters to internal data structures
-func parseInputArguments() []*InputData {
+func parseInputArguments() []*ArtifactData {
 	var err error
 	var inputPath string
 	const inputPathSeparator = ","
@@ -161,11 +161,11 @@ func parseInputArguments() []*InputData {
 	// Initialize LockerConfig to avoid nil dereference errors
 	//LockerConfig = &AgentConfig{}
 
-	if len(LockerAgentConfig.ArgPath) == 0 {
+	if len(LockerAgentConfig.Agent.ArgPath) == 0 {
 		err = errors.New("--file empty")
 		log.Err(err).Str("agent", "parseInputArguments").Msgf("No input file was given.")
 	}
-	if len(LockerAgentConfig.ArgNamespace) == 0 {
+	if len(LockerAgentConfig.Agent.ArgNamespace) == 0 {
 		err = errors.New("--namespace empty")
 		log.Err(err).Str("agent", "parseInputArguments").Msgf("No input namespace was given.")
 	}
@@ -175,7 +175,7 @@ func parseInputArguments() []*InputData {
 
 	//
 	// Store information about Namespace, Project and Job-ID
-	fullNameSpace := LockerAgentConfig.ArgNamespace
+	fullNameSpace := LockerAgentConfig.Agent.ArgNamespace
 	namePaths := strings.Split(fullNameSpace, "/")
 	if len(namePaths) != 3 {
 		err = errors.New("Namespace must contain 3 values separated by '/'")
@@ -185,8 +185,8 @@ func parseInputArguments() []*InputData {
 
 	//
 	// dataArray contains an *InputData, len(inputPathSlice) times
-	inputPathSlice := strings.Split(LockerAgentConfig.ArgPath, inputPathSeparator)
-	dataArray := make([]*InputData, len(inputPathSlice))
+	inputPathSlice := strings.Split(LockerAgentConfig.Agent.ArgPath, inputPathSeparator)
+	dataArray := make([]*ArtifactData, len(inputPathSlice))
 
 	for i, path := range inputPathSlice {
 		if !filepath.IsAbs(path) {
@@ -200,7 +200,7 @@ func parseInputArguments() []*InputData {
 
 		}
 
-		dataArray[i] = &InputData{
+		dataArray[i] = &ArtifactData{
 			FilePath:  inputPath,
 			NameSpace: namePaths[0],
 			Project:   namePaths[1],

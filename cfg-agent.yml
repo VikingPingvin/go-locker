@@ -1,0 +1,7 @@
+agentconfig:
+  server_ip: "127.0.0.1"
+  server_port: "27001"
+  send_concurrent: true
+  log_path: "./locker_agent_log.txt"
+
+

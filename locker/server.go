@@ -21,11 +21,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type connectionType struct {
-	// Send or Recieve
-	intent int
-}
-
 // Struct containing file data from received MetaData message
 type metaInfo struct {
 	fileHash  []byte
@@ -37,10 +32,12 @@ type metaInfo struct {
 }
 
 type ServerConfig struct {
-	ServerIP        string
-	ServerPort      string
-	LogPath         string
-	ArtifactRootDir string
+	Server struct {
+		ServerIP        string `yaml:"server_ip" env:"LOCKER-SERVER-IP" env-default:"127.0.0.1"`
+		ServerPort      string `yaml:"server_port" env:"LOCKER-SERVER-PORT" env-default:"27001"`
+		LogPath         string `yaml:"log_path" env:"LOCKER-SERVER-LOG" env-default:"./locker-server.log"`
+		ArtifactRootDir string `yaml:"artifacts_root_dir" env:"LOCKER-SERVER-ARTIFACTS-ROOT" env-default:"."`
+	} `yaml:"serverconfig"`
 }
 
 var LockerServerConfig *ServerConfig
@@ -64,7 +61,9 @@ func (s ArtifactServer) Start() bool {
 	}
 
 	defer server.Close()
-	log.Info().Msg("Locker server started! Listening for connections...")
+	log.Info().Str("configuration", fmt.Sprintf("%+v", LockerServerConfig.Server)).
+		Msgf("Server started! \n Listening for connections...")
+
 	for {
 		connection, err := server.Accept()
 		if err != nil {

@@ -16,14 +16,10 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
-	"os"
 	"vikingPingvin/locker/locker"
 
-	homedir "github.com/mitchellh/go-homedir"
-	"github.com/rs/zerolog/log"
+	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 type Input struct {
@@ -71,54 +67,13 @@ func init() {
 func initConfig() {
 	if cfgFile != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Find home directory.
-		home, err := homedir.Dir()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+		//viper.SetConfigFile(cfgFile)
 
-		// Search config in home directory with name ".locker" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".locker")
+		cleanenv.ReadConfig(cfgFile, &locker.LockerAgentConfig)
 	}
 
-	viper.AutomaticEnv() // read in environment variables that match
+	locker.LockerAgentConfig.Agent.ArgPath = input.Path
+	locker.LockerAgentConfig.Agent.ArgNamespace = input.Namespace
+	locker.LockerAgentConfig.Agent.ArgConsume = input.Consume
 
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		log.Debug().Msgf("Using config file: %s", viper.ConfigFileUsed())
-	}
-
-	cfgContent = viper.AllSettings()
-
-	log.Debug().Msgf("config:\n %v", viper.AllSettings())
-
-	locker.LockerAgentConfig = &locker.AgentConfig{}
-	locker.LockerAgentConfig.ServerIP = viper.GetString("agentconfig.server_ip")
-	locker.LockerAgentConfig.ServerPort = viper.GetString("agentconfig.server_port")
-	locker.LockerAgentConfig.LogPath = viper.GetString("agentconfig.log_path")
-	locker.LockerAgentConfig.SendConcurrent = viper.GetBool("agentconfig.send_concurrent")
-
-	locker.LockerAgentConfig.ArgPath = input.Path
-	locker.LockerAgentConfig.ArgNamespace = input.Namespace
-	locker.LockerAgentConfig.ArgConsume = input.Consume
-
-	type agentCfg struct {
-		server_ip       string `mapstructure:"server_ip"`
-		server_port     string `mapstructure:"server_port"`
-		send_concurrent bool   `mapstructure:"send_concurrent"`
-		log_path        string `mapstructure:"log_path"`
-	}
-	type agCfgStruct map[string]agentCfg
-	//type config map[string]agCfgStruct
-
-	testCfg := &agCfgStruct{}
-
-	err := viper.UnmarshalExact(&testCfg)
-	//testkey := viper.unmar
-	fmt.Println(err)
-	fmt.Println("asd")
 }
