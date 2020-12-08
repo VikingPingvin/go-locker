@@ -1,6 +1,7 @@
 package locker
 
 import (
+	"fmt"
 	"net"
 	"sync"
 
@@ -9,14 +10,14 @@ import (
 )
 
 // InputArgPath Relative or absolute path of files for Cobra CLI
-var (
-	InputArgPath      string
-	InputArgNamespace string
-	InputArgConsume   string
-)
+//var (
+//	InputArgPath      string
+//	InputArgNamespace string
+//	InputArgConsume   string
+//)
 
-// InputData Populated at the start of the program
-type InputData struct {
+// ArtifactData Represents a single artifact
+type ArtifactData struct {
 	FilePath  string
 	FileName  string
 	NameSpace string
@@ -26,26 +27,41 @@ type InputData struct {
 	ID        xid.ID
 }
 
+// AgentConfig holds configuration values
+type AgentConfig struct {
+	Agent struct {
+		ServerIP       string `yaml:"server_ip" env:"LOCKER_SERVER_IP" env-default:"127.0.0.1"`
+		ServerPort     string `yaml:"server_port" env:"LOCKER_SERVER_PORT" env-default:"27001"`
+		SendConcurrent bool   `yaml:"send_concurrent" env:"LOCKER_AGENT_CONCURRENT" env-default:"true"`
+		LogPath        string `yaml:"log_path" env:"LOCKER_AGENT_LOG" env-default:"./locker-agent.log"`
+		ArgPath        string
+		ArgNamespace   string
+		ArgConsume     string
+	} `yaml:"agentconfig"`
+}
+
+// LockerAgentConfig a
+var LockerAgentConfig *AgentConfig
+
 type Agent interface {
 	Start() bool
 	Stop() bool
 }
 
 type ArtifactAgent struct {
-	Port string
+	Configuration AgentConfig
 }
 
-func (a ArtifactAgent) Start(inputDataArray []*InputData) bool {
-	// TODO: move sendConcurrent to config file
-	const sendConcurrent = true
+func (a ArtifactAgent) Start(inputDataArray []*ArtifactData) bool {
+	var sendConcurrent = a.Configuration.Agent.SendConcurrent
 
 	var wg sync.WaitGroup
 	for _, singleInputData := range inputDataArray {
 		if sendConcurrent {
 			wg.Add(1)
-			go sendArtifactToServer(singleInputData, &wg)
+			go sendArtifactToServer(singleInputData, &a.Configuration, &wg)
 		} else {
-			sendArtifactToServer(singleInputData, &wg)
+			sendArtifactToServer(singleInputData, &a.Configuration, &wg)
 		}
 	}
 
@@ -53,12 +69,20 @@ func (a ArtifactAgent) Start(inputDataArray []*InputData) bool {
 	return true
 }
 
-func sendArtifactToServer(artifact *InputData, wg *sync.WaitGroup) {
-	connection, err := net.Dial("tcp", "localhost:27001")
+func sendArtifactToServer(artifact *ArtifactData, agentConfig *AgentConfig, wg *sync.WaitGroup) {
+	serverAddr := fmt.Sprintf("%s:%s", agentConfig.Agent.ServerIP, agentConfig.Agent.ServerPort)
+	connection, err := net.Dial("tcp", serverAddr)
 	if err != nil {
-		panic(err)
+		// TODO: if wg done is called first, panic is not executed.
+		// Panic first and WG is not decremented -> goroutine error
+		log.Panic().Err(err).Msg("Can't establish connection to the server!!!")
+		wg.Done()
 	}
-	defer connection.Close()
+	defer func() {
+		connection.Close()
+		wg.Done()
+	}()
+
 	log.Info().Msg("Agent connected to Locker Server...")
 
 	// Send Metadata message
@@ -69,8 +93,6 @@ func sendArtifactToServer(artifact *InputData, wg *sync.WaitGroup) {
 
 	// Listen for ACK from server
 	listenForACK(connection, artifact)
-
-	wg.Done()
 }
 
 // ExecuteAgent : Entrypoint for Locker agent start
@@ -79,6 +101,6 @@ func ExecuteAgent() {
 	inputData := parseInputArguments()
 
 	// Start Agent
-	agent := &ArtifactAgent{Port: "27001"}
+	agent := &ArtifactAgent{Configuration: *LockerAgentConfig}
 	agent.Start(inputData)
 }

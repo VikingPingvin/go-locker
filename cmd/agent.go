@@ -18,8 +18,18 @@ package cmd
 import (
 	"vikingPingvin/locker/locker"
 
+	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/spf13/cobra"
 )
+
+type Input struct {
+	Path      string
+	Namespace string
+	Consume   string
+}
+
+// Pointer to an Input Instance
+var input *Input
 
 // agentCmd represents the agent command
 var agentCmd = &cobra.Command{
@@ -27,12 +37,16 @@ var agentCmd = &cobra.Command{
 	Short: "Start Locker in Agent mode",
 	Long:  `locker agent`,
 	Run: func(cmd *cobra.Command, args []string) {
+		initConfig()
 		locker.ExecuteAgent()
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(agentCmd)
+
+	// Initialize input to avoid nil pointer dereference errors
+	input = &Input{}
 
 	// Here you will define your flags and configuration settings.
 
@@ -43,9 +57,23 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// agentCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	agentCmd.Flags().StringVar(&locker.InputArgPath, "file", "", "[path,...] Absolute or relative path(s). Multiple paths must be separated with ','")
+	agentCmd.Flags().StringVar(&input.Path, "file", "", "[path,...] Absolute or relative path(s). Multiple paths must be separated with ','")
+	agentCmd.Flags().StringVar(&input.Namespace, "namespace", "", "[namespace/project/job-id] Separator must be '/'")
+	agentCmd.Flags().StringVar(&input.Consume, "consume", "", "[namespace/project/job-id] Requests the specified artifact to download from the Locker Server.")
 
-	agentCmd.Flags().StringVar(&locker.InputArgNamespace, "namespace", "", "[namespace/project/job-id] Separator must be '/'")
+}
 
-	agentCmd.Flags().StringVar(&locker.InputArgConsume, "consume", "", "[namespace/project/job-id] Requests the specified artifact to download from the Locker Server.")
+// initConfig reads in config file and ENV variables if set.
+func initConfig() {
+	if cfgFile != "" {
+		// Use config file from the flag.
+		//viper.SetConfigFile(cfgFile)
+
+		cleanenv.ReadConfig(cfgFile, &locker.LockerAgentConfig)
+	}
+
+	locker.LockerAgentConfig.Agent.ArgPath = input.Path
+	locker.LockerAgentConfig.Agent.ArgNamespace = input.Namespace
+	locker.LockerAgentConfig.Agent.ArgConsume = input.Consume
+
 }

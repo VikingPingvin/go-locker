@@ -21,11 +21,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type connectionType struct {
-	// Send or Recieve
-	intent int
-}
-
 // Struct containing file data from received MetaData message
 type metaInfo struct {
 	fileHash  []byte
@@ -36,18 +31,30 @@ type metaInfo struct {
 	ID        []byte
 }
 
+type ServerConfig struct {
+	Server struct {
+		ServerIP        string `yaml:"server_ip" env:"LOCKER-SERVER-IP" env-default:"127.0.0.1"`
+		ServerPort      string `yaml:"server_port" env:"LOCKER-SERVER-PORT" env-default:"27001"`
+		LogPath         string `yaml:"log_path" env:"LOCKER-SERVER-LOG" env-default:"./locker-server.log"`
+		ArtifactRootDir string `yaml:"artifacts_root_dir" env:"LOCKER-SERVER-ARTIFACTS-ROOT" env-default:"."`
+	} `yaml:"serverconfig"`
+}
+
+var LockerServerConfig *ServerConfig
+
 type Server interface {
 	Start() bool
 	Stop() bool
 }
 
 type ArtifactServer struct {
-	Address string
-	Port    string
+	Configuration ServerConfig
 }
 
 func (s ArtifactServer) Start() bool {
-	listenAddr := fmt.Sprintf("%s:%s", s.Address, s.Port)
+	listenAddr := fmt.Sprintf("%s:%s",
+		s.Configuration.Server.ServerIP,
+		s.Configuration.Server.ServerPort)
 	server, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		log.Info().Msg("Error listening on port!")
@@ -55,7 +62,9 @@ func (s ArtifactServer) Start() bool {
 	}
 
 	defer server.Close()
-	log.Info().Msg("Locker server started! Listening for connections...")
+	log.Info().Str("configuration", fmt.Sprintf("%+v", s.Configuration.Server)).
+		Msgf("Server started! \n Listening for connections...")
+
 	for {
 		connection, err := server.Accept()
 		if err != nil {
@@ -250,6 +259,6 @@ func sendAckMessage(connection net.Conn, metaData *metaInfo, isSuccesful bool) {
 
 // ExecuteServer : Entrypoint for Locker server start
 func ExecuteServer() {
-	server := &ArtifactServer{Address: "localhost", Port: "27001"}
+	server := &ArtifactServer{Configuration: *LockerServerConfig}
 	server.Start()
 }

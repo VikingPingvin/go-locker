@@ -16,8 +16,10 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
 	"vikingPingvin/locker/locker"
 
+	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/spf13/cobra"
 )
 
@@ -27,20 +29,34 @@ var serverCmd = &cobra.Command{
 	Short: "Start locker in server mode",
 	Long:  `server mode`,
 	Run: func(cmd *cobra.Command, args []string) {
+		initConfigServer()
 		locker.ExecuteServer()
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(serverCmd)
+}
 
-	// Here you will define your flags and configuration settings.
+func initConfigServer() {
+	var serverConfigStruct locker.ServerConfig
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// serverCmd.PersistentFlags().String("foo", "", "A help for foo")
+	if cfgFile != "" {
+		// Use config file from the flag.
+		cleanenv.ReadConfig(cfgFile, &locker.LockerServerConfig)
+	} else {
+		cleanenv.ReadEnv(&serverConfigStruct)
+		locker.LockerServerConfig = &serverConfigStruct
+	}
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// serverCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	//test := &locker.LockerServerConfig
+
+	fmt.Println(serverConfigStruct)
+
+	//locker.LockerServerConfig = &locker.ServerConfig{}
+	//locker.LockerServerConfig.Server.ServerIP = viper.GetString("serverconfig.server_ip")
+	//locker.LockerServerConfig.Server.ServerPort = viper.GetString("serverconfig.server_port")
+	//locker.LockerServerConfig.Server.ArtifactRootDir = viper.GetString("serverconfig.artifacts_root_dir")
+	//locker.LockerServerConfig.Server.LogPath = viper.GetString("serverconfig.log_path")
+
 }
