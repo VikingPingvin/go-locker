@@ -33,10 +33,10 @@ type metaInfo struct {
 
 type ServerConfig struct {
 	Server struct {
-		ServerIP        string `yaml:"server_ip" env:"LOCKER-SERVER-IP" env-default:"127.0.0.1"`
-		ServerPort      string `yaml:"server_port" env:"LOCKER-SERVER-PORT" env-default:"27001"`
-		LogPath         string `yaml:"log_path" env:"LOCKER-SERVER-LOG" env-default:"./locker-server.log"`
-		ArtifactRootDir string `yaml:"artifacts_root_dir" env:"LOCKER-SERVER-ARTIFACTS-ROOT" env-default:"."`
+		ServerIP        string `yaml:"server_ip" env:"LOCKER_SERVER_IP" env-default:"127.0.0.1"`
+		ServerPort      string `yaml:"server_port" env:"LOCKER_SERVER_PORT" env-default:"27001"`
+		LogPath         string `yaml:"log_path" env:"LOCKER_SERVER_LOG" env-default:"./locker-server.log"`
+		ArtifactRootDir string `yaml:"artifacts_root_dir" env:"LOCKER_SERVER_ARTIFACTS_ROOT" env-default:"."`
 	} `yaml:"serverconfig"`
 }
 

@@ -56,10 +56,10 @@ LOCKER_AGENT_LOG = "./locker-agent.log"
 ```
 ```yml
 # AGENT
-LOCKER-SERVER-IP = "127.0.0.1"
-LOCKER-SERVER-PORT = "27001"
-LOCKER-SERVER-LOG = "./locker-server.log"
-LOCKER-SERVER-ARTIFACTS-ROOT = "."
+LOCKER_SERVER_IP = "127.0.0.1"
+LOCKER_SERVER_PORT = "27001"
+LOCKER_SERVER_LOG = "./locker-server.log"
+LOCKER_SERVER_ARTIFACTS_ROOT = "."
 ```
 ## Building
 To build from source:
