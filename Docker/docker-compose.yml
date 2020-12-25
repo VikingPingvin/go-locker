@@ -5,7 +5,7 @@ services:
     ports:
       - "27001:27001"
     volumes:
-      - ./out:/go/bin/out
+      - ./out:/out
       - logvolume01:/var/log
 
 
