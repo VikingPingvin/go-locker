@@ -61,6 +61,7 @@ func (a ArtifactAgent) Start(inputDataArray []*ArtifactData) bool {
 			wg.Add(1)
 			go sendArtifactToServer(singleInputData, &a.Configuration, &wg)
 		} else {
+			wg.Add(1)
 			sendArtifactToServer(singleInputData, &a.Configuration, &wg)
 		}
 	}

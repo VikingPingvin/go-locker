@@ -17,6 +17,9 @@
 - SQLITE database with ORM setup
 - Ability for Agent to request artifact from the Server
 
+## Fixes
+- Fixed agent panic when send_concurrent is false
+
 # 0.2 (2020.12.08)
 ## Feature
 - Ability for Agent to send multiple files with a single configuration
@@ -24,6 +27,7 @@
 
 ## BUGS
 - If the Agent cannot connect to the Server (bad configuration) Locker still crashes, without properly handling the error.
+- Agent Panics when send_concurrent is 'false', after the first file is sent
 ---
 # 0.1 (2020.12.03)
 ## FEATURE 
