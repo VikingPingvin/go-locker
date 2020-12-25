@@ -9,6 +9,7 @@
 
 - Basic Auth (HTPASSWD)
 - Basic web frontend with a tree-like view
+- Fully logging capability implemented with rotated logfiles
 - Parts of code is covered by tests
 - **(Post 1.0)** *Project based profiles in config -> No need to pass multiple* artifact paths.
 ---
@@ -17,10 +18,10 @@
 - SQLITE database with ORM setup
 - Ability for Agent to request artifact from the Server
 - Rework logging to use io.multiwriter (STDOUT and configured log file)
-- Server artifact root path configuration implementation
 
 ## Feature
 - Basic Docker support via **Dockerfile** and **docker-compose.yml**
+- Artifact Root Directory Configuration is implemented
 
 ## Fixes
 - Fixed agent panic when send_concurrent is false

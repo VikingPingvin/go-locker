@@ -74,12 +74,12 @@ func (s ArtifactServer) Start() bool {
 			os.Exit(1)
 		}
 
-		go handleConnection(connection)
+		go handleConnection(connection, &s.Configuration)
 
 	}
 }
 
-func handleConnection(connection net.Conn) {
+func handleConnection(connection net.Conn, serverConfig *ServerConfig) {
 	log.Info().Msgf("Locker client connected: %s", connection.RemoteAddr().String())
 	timeStart := time.Now()
 	defer func() {
@@ -167,8 +167,9 @@ func handleConnection(connection net.Conn) {
 	receptionSuccesful := compareArtifactHash(metaData.fileHash, artifactPath)
 	if receptionSuccesful {
 		//Rename file
-		baseDir := filepath.Dir(artifactPath.Name())
-		newPath := filepath.Join(baseDir,
+		//baseDir := filepath.Dir(artifactPath.Name())
+		configuredRootPath := serverConfig.Server.ArtifactRootDir
+		newPath := filepath.Join(configuredRootPath,
 			metaData.namespace,
 			metaData.project,
 			metaData.jobID,
