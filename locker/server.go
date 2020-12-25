@@ -52,8 +52,10 @@ type ArtifactServer struct {
 }
 
 func (s ArtifactServer) Start() bool {
-	listenAddr := fmt.Sprintf("%s:%s",
-		s.Configuration.Server.ServerIP,
+	//listenAddr := fmt.Sprintf("%s:%s",
+	//	s.Configuration.Server.ServerIP,
+	//	s.Configuration.Server.ServerPort)
+	listenAddr := fmt.Sprintf(":%s",
 		s.Configuration.Server.ServerPort)
 	server, err := net.Listen("tcp", listenAddr)
 	if err != nil {

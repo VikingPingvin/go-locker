@@ -1,0 +1,13 @@
+version: "3.8"  # optional since v1.27.0
+services:
+  locker-server:
+    image: locker:test
+    ports:
+      - "27001:27001"
+    volumes:
+      - ./out:/out
+      - logvolume01:/var/log
+
+
+volumes:
+  logvolume01: {}
