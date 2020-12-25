@@ -85,7 +85,7 @@ func sendArtifactToServer(artifact *ArtifactData, agentConfig *AgentConfig, wg *
 	}()
 
 	log.Info().
-		Str("server", fmt.Sprintf("%v %v", connection.RemoteAddr().String(), connection.LocalAddr().String())).
+		Str("server", fmt.Sprintf("%v", connection.RemoteAddr().String())).
 		Msg("Agent connected to Locker Server.")
 
 	// Send Metadata message
