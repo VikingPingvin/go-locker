@@ -17,7 +17,9 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -ldflag
 FROM scratch
 
 COPY --from=builder /go/bin/locker /go/bin/locker
+## Copy config yml
+#COPY cfg-server.yml /go/bin/cfg-server.yml
 
-## TODO: Copy config yml
+EXPOSE 27001
 
 ENTRYPOINT [ "/go/bin/locker", "server" ]
