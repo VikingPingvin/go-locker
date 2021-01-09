@@ -4,6 +4,11 @@ services:
     image: locker:test
     ports:
       - "27001:27001"
+    environment: 
+      - LOCKER_SERVER_IP="127.0.0.1"
+      - LOCKER_SERVER_PORT="27001"
+      - LOCKER_SERVER_LOG="./locker-server.log"
+      - LOCKER_SERVER_ARTIFACTS_ROOT="/out"
     volumes:
       - ./out:/out
       - logvolume01:/var/log

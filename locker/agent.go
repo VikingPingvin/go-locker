@@ -89,6 +89,7 @@ func sendArtifactToServer(artifact *ArtifactData, agentConfig *AgentConfig, wg *
 		Msg("Agent connected to Locker Server.")
 
 	// Send Metadata message
+	//TODO: Parse return err (eg.: file not found, don't continue)
 	parseAndSendMetaData(connection, artifact)
 
 	// Send Payload message(s)

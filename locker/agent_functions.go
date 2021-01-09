@@ -198,6 +198,8 @@ func parseInputArguments() []*ArtifactData {
 			log.Debug().Msgf("Relative path of input: %s", path)
 			inputPath = filepath.Join(cwd, path)
 
+		} else {
+			inputPath = path
 		}
 
 		dataArray[i] = &ArtifactData{
