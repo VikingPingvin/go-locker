@@ -9,15 +9,23 @@
 
 - Basic Auth (HTPASSWD)
 - Basic web frontend with a tree-like view
-- Fully logging capability implemented with rotated logfiles
+- Full logging capability implemented with rotated logfiles
 - Parts of code is covered by tests
 - **(Post 1.0)** *Project based profiles in config -> No need to pass multiple* artifact paths.
 ---
-# 0.4 (Unreleased)
+# Unreleased
 ## Feature Backlog
 - SQLITE database with ORM setup
-- Ability for Agent to request artifact from the Server
+- Ability for Agent to request artifact from the Server **(High Prio)**
 - Rework logging to use io.multiwriter (STDOUT and configured log file)
+
+
+# 0.4 (2021.01.09)
+## Fixes
+- Fixed absolute path usage in `--file` flag
+
+## Bugs
+- [Linux] Output directory folders are not accessible by running UID (perm. denied)
 
 # 0.3 (2020.12.25)
 ## Feature
